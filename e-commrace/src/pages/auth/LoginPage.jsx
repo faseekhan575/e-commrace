@@ -1,185 +1,90 @@
 // ============================================================
-// LoginPage.jsx — Premium Vault Login
+// LoginPage.jsx — Unified Vault Login (auto-detects role)
 // ============================================================
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, clearError } from "../../store/authSlice";
-import { Eye, EyeOff, User, Shield, Crown, ArrowLeft, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
-/* ── Mode config ── */
-const MODES = {
-  user: {
-    label: "Member", icon: User,
-    accent: "#e8e8d8", accentRgb: "232,232,216",
-    bg: "#0d0d0b",
-    grid: "#ffffff",
-    glow: "rgba(232,232,216,0.07)",
-    description: "Welcome back",
-    sub: "Your personal shopping space",
-    allowedRoles: ["user"],
-    redirect: "/",
-    errorMessage: (role) =>
-      role === "admin" ? "Admin account — switch to Admin tab." : "Super Admin account — switch to Super Admin tab.",
-  },
-  admin: {
-    label: "Admin", icon: Shield,
-    accent: "#a78bfa", accentRgb: "167,139,250",
-    bg: "#07040f",
-    grid: "#a78bfa",
-    glow: "rgba(167,139,250,0.12)",
-    description: "Admin Panel",
-    sub: "Restricted — authorized only",
-    allowedRoles: ["admin", "superadmin"],
-    redirect: "/admin",
-    errorMessage: () => "User account — switch to Member tab.",
-  },
-  superadmin: {
-    label: "Super Admin", icon: Crown,
-    accent: "#f9c938", accentRgb: "249,201,56",
-    bg: "#020202",
-    grid: "#f9c938",
-    glow: "rgba(249,201,56,0.1)",
-    description: "Super Admin Suite",
-    sub: "Full system access — ultra restricted",
-    allowedRoles: ["superadmin"],
-    redirect: "/superadmin",
-    errorMessage: (role) =>
-      role === "admin" ? "Admin account — switch to Admin tab." : "User account — switch to Member tab.",
-  },
+/* ── Role redirect map ── */
+const ROLE_REDIRECT = {
+  user:       "/",
+  admin:      "/admin",
+  superadmin: "/superadmin",
 };
 
-/* ── Inject styles ── */
+/* ── Inject Fonts (same as RegisterPage) ── */
 function InjectFonts() {
   useEffect(() => {
     if (document.getElementById("vault-login-fonts")) return;
     const l = document.createElement("link");
     l.id = "vault-login-fonts";
     l.rel = "stylesheet";
-    l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap";
+    l.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap";
     document.head.appendChild(l);
     const s = document.createElement("style");
     s.textContent = `
       .vl-display { font-family: 'Cormorant Garamond', Georgia, serif; }
-      .vl-mono    { font-family: 'DM Mono', 'Courier New', monospace; }
       .vl-body    { font-family: 'DM Sans', system-ui, sans-serif; }
-      @keyframes vl-up   { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-      @keyframes vl-in   { from{opacity:0} to{opacity:1} }
-      @keyframes vl-scan { 0%{top:-10%} 100%{top:110%} }
-      @keyframes vl-pulse{ 0%,100%{opacity:.6} 50%{opacity:1} }
-      .vl-a1 { animation: vl-up .5s cubic-bezier(.22,1,.36,1) both; }
-      .vl-a2 { animation: vl-up .5s .07s cubic-bezier(.22,1,.36,1) both; }
-      .vl-a3 { animation: vl-up .5s .14s cubic-bezier(.22,1,.36,1) both; }
-      .vl-a4 { animation: vl-up .5s .21s cubic-bezier(.22,1,.36,1) both; }
-      .vl-a5 { animation: vl-up .5s .28s cubic-bezier(.22,1,.36,1) both; }
-      .vl-scan-line {
-        position:absolute; left:0; right:0; height:1px;
-        animation: vl-scan 4s ease-in-out infinite;
-        opacity:.15;
-      }
-      .vl-input-wrap { position:relative; }
-      .vl-input-wrap input { background:rgba(0,0,0,0.4); color:#fff; }
-      .vl-input-wrap input::placeholder { color:transparent; }
-      .vl-float-label {
-        position:absolute; pointer-events:none; select:none;
-        left:16px; transition: all .2s cubic-bezier(.22,1,.36,1);
-        font-family:'DM Sans',system-ui,sans-serif;
-      }
-      .vl-input-wrap input:focus ~ .vl-float-label,
-      .vl-input-wrap input:not(:placeholder-shown) ~ .vl-float-label {
-        top: 9px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
-      }
-      .vl-input-wrap input:not(:focus):placeholder-shown ~ .vl-float-label {
-        top: 50%; transform: translateY(-50%); font-size: 13px; letter-spacing: 0; text-transform: none;
-      }
-      .vl-input-wrap input:focus ~ .vl-float-label { opacity:.9; }
-      .vl-tab-active-line { transition: left .3s cubic-bezier(.22,1,.36,1), width .3s cubic-bezier(.22,1,.36,1); }
-      @keyframes vl-mode-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-      .vl-mode-content { animation: vl-mode-in .3s cubic-bezier(.22,1,.36,1) both; }
+      @keyframes vl-up { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+      @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+      .vl-a1 { animation: vl-up .55s cubic-bezier(.22,1,.36,1) both; }
+      .vl-a2 { animation: vl-up .55s .08s cubic-bezier(.22,1,.36,1) both; }
+      .vl-a3 { animation: vl-up .55s .16s cubic-bezier(.22,1,.36,1) both; }
+      .vl-a4 { animation: vl-up .55s .24s cubic-bezier(.22,1,.36,1) both; }
+      .vl-a5 { animation: vl-up .55s .32s cubic-bezier(.22,1,.36,1) both; }
     `;
     document.head.appendChild(s);
   }, []);
   return null;
 }
 
-/* ── Floating Label Input ── */
-function VLInput({ id, label, type, value, onChange, onFocus, onBlur, error, accent, children }) {
+/* ── Floating Label Input (same style as RegisterPage) ── */
+function FloatInput({ id, label, type = "text", value, onChange, error, children }) {
   const [focused, setFocused] = useState(false);
-  const lifted = focused || (value && value.length > 0);
+  const lifted = focused || value.length > 0;
   return (
     <div>
-      <div className="vl-input-wrap" style={{ position: "relative" }}>
-        <input
-          id={id}
-          type={type || "text"}
-          value={value}
-          placeholder=" "
-          onChange={onChange}
-          onFocus={() => { setFocused(true); onFocus?.(); }}
-          onBlur={() => { setFocused(false); onBlur?.(); }}
-          required
-          style={{
-            width: "100%",
-            padding: lifted ? "24px 44px 10px 16px" : "17px 44px 17px 16px",
-            borderRadius: "14px",
-            border: `1px solid ${error ? "#ef444450" : focused ? `${accent}60` : "#1a1a1a"}`,
-            outline: "none",
-            fontSize: "13px",
-            transition: "border-color .2s, padding .15s",
-            boxShadow: focused ? `0 0 0 3px ${accent}10` : "none",
-          }}
-        />
+      <div
+        className="relative w-full rounded-2xl overflow-hidden transition-all duration-200"
+        style={{
+          border: `1.5px solid ${error ? "#ef4444" : focused ? "#1a1a14" : "#e0e0d8"}`,
+          boxShadow: focused ? "0 0 0 3px rgba(26,26,20,.06)" : "none",
+        }}
+      >
         <label
           htmlFor={id}
+          className="absolute left-4 pointer-events-none select-none transition-all duration-200 font-medium"
           style={{
-            position: "absolute",
-            pointerEvents: "none",
-            left: "16px",
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-            transition: "all .2s cubic-bezier(.22,1,.36,1)",
-            top: lifted ? "9px" : "50%",
+            top: lifted ? "8px" : "50%",
             transform: lifted ? "none" : "translateY(-50%)",
-            fontSize: lifted ? "10px" : "13px",
-            letterSpacing: lifted ? ".1em" : "0",
+            fontSize: lifted ? "10px" : "14px",
+            letterSpacing: lifted ? "0.1em" : "0",
             textTransform: lifted ? "uppercase" : "none",
-            color: lifted ? (focused ? accent : "#444") : "#333",
-            fontWeight: lifted ? "500" : "400",
+            color: lifted ? (focused ? "#1a1a14" : "#a8a898") : "#b0b0a0",
           }}
         >
           {label}
         </label>
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder=""
+          required
+          className="w-full bg-transparent text-[#1a1a14] text-sm outline-none"
+          style={{ padding: "26px 44px 10px 16px" }}
+        />
         {children && (
-          <div style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)" }}>
-            {children}
-          </div>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">{children}</div>
         )}
       </div>
-      {error && <p style={{ marginTop: "6px", fontSize: "11px", color: "#ef4444", paddingLeft: "4px" }}>{error}</p>}
-    </div>
-  );
-}
-
-/* ── Animated Background ── */
-function AnimBG({ mode, accent, grid, glow }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0" style={{ backgroundColor: MODES[mode].bg }} />
-      {/* Grid */}
-      <div className="absolute inset-0 opacity-[0.04]"
-        style={{ backgroundImage: `linear-gradient(${grid} 1px,transparent 1px),linear-gradient(90deg,${grid} 1px,transparent 1px)`, backgroundSize: "60px 60px" }} />
-      {/* Glow blobs */}
-      <div className="absolute -top-1/4 -right-1/4 rounded-full blur-[140px] transition-all duration-700"
-        style={{ width: "70vw", height: "70vw", backgroundColor: glow, opacity: 0.8 }} />
-      <div className="absolute -bottom-1/4 -left-1/4 rounded-full blur-[120px] transition-all duration-700"
-        style={{ width: "55vw", height: "55vw", backgroundColor: glow, opacity: 0.5 }} />
-      {/* Scan line */}
-      <div className="vl-scan-line" style={{ background: `linear-gradient(90deg,transparent,${accent},transparent)` }} />
-      {/* Corner accents */}
-      <div className="absolute top-0 left-0 w-16 h-16" style={{ borderTop: `1px solid ${accent}18`, borderLeft: `1px solid ${accent}18`, borderTopLeftRadius: "0" }} />
-      <div className="absolute top-0 right-0 w-16 h-16" style={{ borderTop: `1px solid ${accent}18`, borderRight: `1px solid ${accent}18` }} />
-      <div className="absolute bottom-0 left-0 w-16 h-16" style={{ borderBottom: `1px solid ${accent}18`, borderLeft: `1px solid ${accent}18` }} />
-      <div className="absolute bottom-0 right-0 w-16 h-16" style={{ borderBottom: `1px solid ${accent}18`, borderRight: `1px solid ${accent}18` }} />
+      {error && <p className="mt-1.5 text-[11px] text-red-500 px-1">{error}</p>}
     </div>
   );
 }
@@ -188,170 +93,183 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading } = useSelector((s) => s.auth);
-  const [mode, setMode] = useState("user");
   const [showPass, setShowPass] = useState(false);
-  const [localError, setLocalError] = useState("");
   const [form, setForm] = useState({ email: "", password: "" });
-  const modeKeys = Object.keys(MODES);
-  const m = MODES[mode];
-  const Icon = m.icon;
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [localError, setLocalError] = useState("");
 
-  const switchMode = (key) => {
-    setMode(key);
-    setLocalError("");
-    setForm({ email: "", password: "" });
-    dispatch(clearError());
+  const validate = () => {
+    const errs = {};
+    if (!form.email.includes("@")) errs.email = "Enter a valid email";
+    if (!form.password) errs.password = "Password is required";
+    return errs;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError("");
     dispatch(clearError());
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    setFieldErrors({});
+
     const result = await dispatch(loginUser(form));
     if (loginUser.fulfilled.match(result)) {
       const { role } = result.payload;
-      if (!m.allowedRoles.includes(role)) {
-        const msg = m.errorMessage(role);
-        setLocalError(msg);
-        toast.error(msg, { duration: 4000 });
-        dispatch({ type: "auth/logout/fulfilled" });
-        try { await import("../../axiosConfig").then(a => a.default.post("/api/v1/auth/logout")); } catch {}
-        return;
-      }
+      const redirect = ROLE_REDIRECT[role] || "/";
       toast.success("Welcome back!");
-      navigate(m.redirect);
+      navigate(redirect);
     } else {
       setLocalError(result.payload || "Invalid credentials");
     }
   };
 
+  const update = (field) => (e) => {
+    setForm({ ...form, [field]: e.target.value });
+    setLocalError("");
+    if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: "" });
+  };
+
   return (
-    <div className="vl-body relative min-h-screen flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+    <div className="vl-body min-h-screen bg-[#fafaf8] flex overflow-hidden">
       <InjectFonts />
-      <AnimBG mode={mode} accent={m.accent} grid={m.grid} glow={m.glow} />
 
-      <div className="relative z-10 w-full max-w-[420px]">
+      {/* ── Left decorative panel ── */}
+      <div className="hidden lg:flex lg:w-[42%] xl:w-[45%] relative flex-col justify-between p-12 bg-[#1a1a14] overflow-hidden flex-shrink-0">
+        {/* Background texture */}
+        <div className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-white/5 blur-3xl pointer-events-none" />
 
-        {/* ── Logo ── */}
-        <div className="vl-a1 flex items-center justify-center gap-3 mb-8">
-          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[17px] transition-all duration-500"
-            style={{ borderBottomColor: m.accent }} />
-          <span className="vl-display text-white text-xl font-bold tracking-[0.25em]">VAULT</span>
+        {/* Floating triangles */}
+        {[0,1,2,3,4].map(i => (
+          <div key={i} className="absolute pointer-events-none"
+            style={{
+              left: `${10+i*18}%`, top: `${15+(i%3)*22}%`,
+              width: 0, height: 0,
+              borderLeft: `${6+i*2}px solid transparent`,
+              borderRight: `${6+i*2}px solid transparent`,
+              borderBottom: `${10+i*4}px solid rgba(255,255,255,0.06)`,
+              animation: `float ${3.5+i*0.7}s ease-in-out infinite`,
+              animationDelay: `${i*0.5}s`,
+            }} />
+        ))}
+
+        {/* Logo */}
+        <div className="relative z-10">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[17px] border-b-white" />
+            <span className="vl-display text-white text-2xl font-bold tracking-[0.25em]">VAULT</span>
+          </Link>
         </div>
 
-        {/* ── Card ── */}
-        <div
-          className="rounded-3xl p-6 sm:p-8 transition-all duration-500"
-          style={{
-            background: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
-            border: `1px solid ${m.accent}22`,
-            boxShadow: `0 0 60px rgba(${m.accentRgb},0.08), 0 32px 64px rgba(0,0,0,0.5)`,
-          }}
-        >
+        {/* Center quote */}
+        <div className="relative z-10">
+          <div className="w-8 h-px bg-white/30 mb-6" />
+          <p className="vl-display text-white text-4xl xl:text-5xl font-light leading-[1.1] mb-4">
+            Welcome<br />
+            <em className="not-italic text-white/50">back</em><br />
+            to Vault.
+          </p>
+          <p className="text-white/40 text-sm leading-relaxed max-w-xs">
+            Sign in and we'll take you exactly where you belong — whether that's your cart, your dashboard, or your command center.
+          </p>
+        </div>
 
-          {/* ── Mode Tabs ── */}
-          <div className="vl-a2 relative flex gap-1 p-1 rounded-2xl mb-7 overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            {modeKeys.map((key) => {
-              const mv = MODES[key];
-              const MIcon = mv.icon;
-              const active = mode === key;
-              return (
-                <button key={key} onClick={() => switchMode(key)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
-                  style={{
-                    background: active ? `rgba(${mv.accentRgb},0.12)` : "transparent",
-                    color: active ? mv.accent : "#3a3a3a",
-                    border: `1px solid ${active ? `${mv.accent}30` : "transparent"}`,
-                    boxShadow: active ? `0 0 16px rgba(${mv.accentRgb},0.15)` : "none",
-                  }}>
-                  <MIcon size={12} />
-                  <span className="hidden xs:inline sm:inline">{mv.label}</span>
-                </button>
-              );
-            })}
+        {/* Bottom stats */}
+        <div className="relative z-10 flex gap-8">
+          {[["50K+","Members"],["99%","Satisfaction"],["10K+","Products"]].map(([n,l]) => (
+            <div key={l}>
+              <p className="vl-display text-white text-2xl font-bold">{n}</p>
+              <p className="text-white/40 text-[11px] tracking-widest uppercase mt-0.5">{l}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right form panel ── */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-12 min-h-screen overflow-y-auto">
+        <div className="w-full max-w-[420px]">
+
+          {/* Mobile logo */}
+          <div className="vl-a1 flex items-center gap-2 mb-8 lg:hidden">
+            <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[14px] border-b-[#1a1a14]" />
+            <span className="vl-display text-[#1a1a14] text-lg font-bold tracking-[0.2em]">VAULT</span>
           </div>
 
-          {/* ── Header ── */}
-          <div className="vl-mode-content vl-a3 flex items-center gap-3 mb-6" key={mode}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
-              style={{ background: `rgba(${m.accentRgb},0.12)`, border: `1px solid ${m.accent}25` }}>
-              <Icon size={18} style={{ color: m.accent }} />
-            </div>
-            <div>
-              <h1 className="vl-display text-white font-bold text-lg leading-tight">{m.description}</h1>
-              <p className="vl-mono text-[10px] mt-0.5 uppercase tracking-widest" style={{ color: "#333" }}>{m.sub}</p>
-            </div>
+          {/* Heading */}
+          <div className="vl-a1 mb-8">
+            <p className="text-[11px] tracking-[0.2em] uppercase text-[#a8a898] font-medium mb-2">Welcome Back</p>
+            <h1 className="vl-display text-[#1a1a14] font-bold leading-none" style={{ fontSize: "clamp(2.2rem,5vw,3rem)" }}>
+              Sign In
+            </h1>
+            <div className="w-8 h-[2px] bg-[#1a1a14] mt-3" />
+            <p className="text-[13px] text-[#a8a898] mt-3 leading-relaxed">
+              Your role is detected automatically — no need to choose.
+            </p>
           </div>
 
-          {/* ── Form ── */}
-          <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
-            <div className="vl-a3">
-              <VLInput
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+
+            {/* Email */}
+            <div className="vl-a2">
+              <FloatInput
                 id="email" label="Email Address" type="email"
-                value={form.email} accent={m.accent}
-                onChange={(e) => { setForm({ ...form, email: e.target.value }); setLocalError(""); }}
+                value={form.email} onChange={update("email")}
+                error={fieldErrors.email}
               />
             </div>
 
-            <div className="vl-a4">
-              <VLInput
+            {/* Password */}
+            <div className="vl-a3">
+              <FloatInput
                 id="password" label="Password"
                 type={showPass ? "text" : "password"}
-                value={form.password} accent={m.accent}
-                onChange={(e) => { setForm({ ...form, password: e.target.value }); setLocalError(""); }}
+                value={form.password} onChange={update("password")}
+                error={fieldErrors.password}
               >
                 <button type="button" onClick={() => setShowPass(!showPass)}
-                  style={{ color: "#444", background: "none", border: "none", cursor: "pointer", padding: "4px" }}>
+                  className="p-1 text-[#a8a898] hover:text-[#1a1a14] transition-colors">
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
-              </VLInput>
-              {mode === "user" && (
-                <div className="flex justify-end mt-1.5">
-                  <Link to="/forgot-password" className="vl-mono text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity"
-                    style={{ color: "#444" }}>
-                    Forgot password?
-                  </Link>
-                </div>
-              )}
+              </FloatInput>
+
+              {/* Forgot password */}
+              <div className="flex justify-end mt-1.5">
+                <Link to="/forgot-password"
+                  className="text-[11px] tracking-wide text-[#a8a898] hover:text-[#1a1a14] transition-colors underline-offset-2 hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             {/* Error */}
             {localError && (
-              <div className="vl-a4 flex items-start gap-2.5 px-4 py-3 rounded-xl"
-                style={{ background: "#ef444410", border: "1px solid #ef444428" }}>
-                <p className="text-xs leading-relaxed" style={{ color: "#f87171" }}>{localError}</p>
+              <div className="vl-a4 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-100">
+                <p className="text-xs text-red-600">{localError}</p>
               </div>
             )}
 
             {/* Submit */}
-            <div className="vl-a5 pt-1">
+            <div className="vl-a4 pt-1">
               <button
                 type="submit"
                 disabled={loading}
-                className="relative w-full py-3.5 rounded-xl text-sm font-bold overflow-hidden group disabled:opacity-50 flex items-center justify-center gap-2 transition-all duration-300"
-                style={{
-                  background: m.accent,
-                  color: mode === "user" ? "#1a1a14" : "#000",
-                  boxShadow: `0 4px 24px rgba(${m.accentRgb},0.25)`,
-                  letterSpacing: "0.04em",
-                }}
+                className="relative w-full py-4 rounded-2xl bg-[#1a1a14] text-white text-sm font-semibold overflow-hidden group disabled:opacity-60 transition-all duration-200 flex items-center justify-center gap-2.5"
+                style={{ letterSpacing: "0.05em" }}
               >
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.15)" }} />
-                <span className="relative flex items-center gap-2">
+                <span className="absolute inset-0 translate-y-full group-hover:translate-y-0 bg-[#3c3c30] transition-transform duration-300 rounded-2xl" />
+                <span className="relative flex items-center gap-2.5">
                   {loading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                       Signing in…
                     </>
                   ) : (
                     <>
-                      <Icon size={14} />
-                      Sign in as {m.label}
-                      <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+                      Sign In
+                      <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
                     </>
                   )}
                 </span>
@@ -360,38 +278,22 @@ export default function LoginPage() {
           </form>
 
           {/* Register link */}
-          {mode === "user" && (
-            <p className="text-center text-xs mt-5" style={{ color: "#333" }}>
+          <div className="vl-a5 mt-8 pt-6 border-t border-[#f0f0e8]">
+            <p className="text-[13px] text-[#a8a898] text-center">
               No account?{" "}
-              <Link to="/register" className="font-semibold hover:underline underline-offset-2 transition-colors"
-                style={{ color: m.accent }}>
+              <Link to="/register" className="text-[#1a1a14] font-semibold hover:underline underline-offset-2">
                 Create one
               </Link>
             </p>
-          )}
+          </div>
 
-          {/* Mode hint for admin/superadmin */}
-          {mode !== "user" && (
-            <div className="mt-5 px-4 py-2.5 rounded-xl text-center text-[11px]"
-              style={{ border: `1px solid ${m.accent}18`, background: `rgba(${m.accentRgb},0.05)`, color: "#444" }}>
-              {mode === "admin"
-                ? "Both Admin and Super Admin accounts can access this panel."
-                : "Only Super Admin accounts are permitted here."}
-            </div>
-          )}
-
-          {/* Back */}
-          <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <Link to="/" className="flex items-center gap-1.5 text-xs transition-colors hover:text-white"
-              style={{ color: "#2a2a2a" }}>
+          {/* Back to store */}
+          <div className="mt-4">
+            <Link to="/" className="flex items-center gap-1.5 text-xs text-[#c0c0b8] hover:text-[#1a1a14] transition-colors">
               <ArrowLeft size={13} /> Back to store
             </Link>
           </div>
         </div>
-
-        {/* Glow under card */}
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/5 h-8 rounded-full blur-2xl -z-10 transition-all duration-500"
-          style={{ background: m.accent, opacity: 0.15 }} />
       </div>
     </div>
   );
