@@ -89,7 +89,7 @@ export default function App() {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s) => s.auth);
 
-  useEffect(() => { dispatch(fetchProfile()); }, [dispatch]);
+ useEffect(() => { if (!isAuthenticated) dispatch(fetchProfile()); }, [dispatch]);
   useEffect(() => { if (isAuthenticated) dispatch(fetchCart()); }, [isAuthenticated, dispatch]);
 
   return (
