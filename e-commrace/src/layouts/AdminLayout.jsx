@@ -126,7 +126,7 @@ export default function AdminLayout() {
   }, [location.pathname, isDesktop]);
 
   useEffect(() => {
-    const socket = io("http://localhost:8000");
+    const socket = io("https://e-commarce-v3jf.onrender.com");
     socket.emit("join_admin_room");
     socket.on("new_order", (data) => {
       setNotifications((p) => [data, ...p].slice(0, 20));
