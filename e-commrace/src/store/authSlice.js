@@ -76,6 +76,7 @@ const authSlice = createSlice({
         state.user = action.payload;
         state.role = action.payload.role;
         state.isAuthenticated = true;
+        localStorage.setItem("accessToken", action.payload.accessToken);
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
@@ -97,6 +98,7 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.otpPending = false;
         state.otpEmail = null;
+        localStorage.setItem("accessToken", action.payload.accessToken);
       })
       .addCase(verifyOtp.rejected, (state, action) => {
         state.loading = false;
@@ -107,6 +109,7 @@ const authSlice = createSlice({
         state.user = null;
         state.role = null;
         state.isAuthenticated = false;
+        localStorage.removeItem("accessToken");
       })
       // PROFILE
       .addCase(fetchProfile.fulfilled, (state, action) => {
@@ -118,6 +121,7 @@ const authSlice = createSlice({
         state.user = null;
         state.role = null;
         state.isAuthenticated = false;
+        localStorage.removeItem("accessToken");
       });
   },
 });
