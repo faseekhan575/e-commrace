@@ -87,11 +87,11 @@ function ProductCard({ product, index }) {
           </div>
         )}
 
-        {/* Add to cart – always visible on mobile, hover on desktop */}
+        {/* FIX: Always visible on mobile, hover-only on desktop */}
         <button
           onClick={handleAdd}
           className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1a1a14] text-white flex items-center justify-center
-            sm:opacity-0 sm:group-hover:opacity-100 sm:translate-y-2 sm:group-hover:translate-y-0
+            opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-y-2 sm:group-hover:translate-y-0
             transition-all duration-300 hover:bg-[#3c3c30] active:scale-90"
         >
           <ShoppingBag size={13} />
@@ -186,7 +186,6 @@ export default function ProductsPage() {
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "");
-
   const [desktopPage, setDesktopPage] = useState(1);
 
   const [mobileProducts, setMobileProducts] = useState([]);
@@ -196,7 +195,11 @@ export default function ProductsPage() {
   const [mobileTotal, setMobileTotal] = useState(0);
 
   const [showFilters, setShowFilters] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+
+  // ── FIX 1: Read window.innerWidth immediately so mobile renders correctly from the start
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
 
   const sentinelRef = useRef(null);
   const gridRef = useRef(null);
@@ -204,7 +207,6 @@ export default function ProductsPage() {
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
-    check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
@@ -213,17 +215,20 @@ export default function ProductsPage() {
     dispatch(fetchCategories());
   }, [dispatch]);
 
+  // Desktop fetch
   useEffect(() => {
     if (!isMobile) {
       dispatch(fetchProducts({ page: desktopPage, limit: 12, category: selectedCategory, search }));
     }
   }, [dispatch, isMobile, desktopPage, selectedCategory, search]);
 
+  // ── FIX 2: Reset mobile state when filters change
   useEffect(() => {
     if (isMobile) {
       setMobileProducts([]);
       setMobilePage(1);
       setMobileHasMore(true);
+      setMobileTotal(0);
       isFetchingRef.current = false;
     }
   }, [isMobile, search, selectedCategory]);
@@ -238,7 +243,12 @@ export default function ProductsPage() {
           fetchProducts({ page: pageNum, limit: 6, category: selectedCategory, search })
         );
         if (fetchProducts.fulfilled.match(result)) {
-          const { list: newItems, total: t, totalPages: tp } = result.payload;
+          // ── FIX 3: Safely read payload — handle both flat and nested shapes
+          const payload = result.payload;
+          const newItems = payload?.list ?? payload?.products ?? [];
+          const t = payload?.total ?? 0;
+          const tp = payload?.totalPages ?? 1;
+
           setMobileProducts((prev) => (pageNum === 1 ? newItems : [...prev, ...newItems]));
           setMobileTotal(t);
           setMobileHasMore(pageNum < tp);
@@ -251,15 +261,24 @@ export default function ProductsPage() {
     [dispatch, selectedCategory, search]
   );
 
+  // ── FIX 4: Only fetch when mobilePage changes, not on every filter reset
   useEffect(() => {
-    if (isMobile) fetchMobilePage(mobilePage);
-  }, [isMobile, mobilePage, fetchMobilePage]);
+    if (isMobile && mobilePage >= 1) {
+      fetchMobilePage(mobilePage);
+    }
+  }, [isMobile, mobilePage]); // intentionally exclude fetchMobilePage to avoid double-fetch
 
+  // Infinite scroll observer
   useEffect(() => {
     if (!isMobile) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && mobileHasMore && !mobileLoading && !isFetchingRef.current) {
+        if (
+          entries[0].isIntersecting &&
+          mobileHasMore &&
+          !mobileLoading &&
+          !isFetchingRef.current
+        ) {
           setMobilePage((prev) => prev + 1);
         }
       },
@@ -413,12 +432,17 @@ export default function ProductsPage() {
 
             {mobileProducts.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
-                {mobileProducts.map((p, i) => <ProductCard key={p._id} product={p} index={i} />)}
-                {mobileLoading && Array(6).fill(0).map((_, i) => <SkeletonCard key={`sk-${i}`} />)}
+                {mobileProducts.map((p, i) => (
+                  <ProductCard key={p._id} product={p} index={i} />
+                ))}
+                {mobileLoading &&
+                  Array(2).fill(0).map((_, i) => <SkeletonCard key={`sk-${i}`} />)}
               </div>
             )}
 
-            {mobileHasMore && <div ref={sentinelRef} className="h-10 w-full mt-2" />}
+            {mobileHasMore && !mobileLoading && (
+              <div ref={sentinelRef} className="h-10 w-full mt-2" />
+            )}
 
             {mobileLoading && mobileProducts.length > 0 && (
               <div className="flex justify-center mt-5 mb-2">
@@ -449,11 +473,17 @@ export default function ProductsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 grid-fade">
-                {list.map((p, i) => <ProductCard key={p._id} product={p} index={i} />)}
+                {list.map((p, i) => (
+                  <ProductCard key={p._id} product={p} index={i} />
+                ))}
               </div>
             )}
 
-            <Pagination page={desktopPage} totalPages={totalPages} onPageChange={handleDesktopPageChange} />
+            <Pagination
+              page={desktopPage}
+              totalPages={totalPages}
+              onPageChange={handleDesktopPageChange}
+            />
           </div>
         )}
       </div>

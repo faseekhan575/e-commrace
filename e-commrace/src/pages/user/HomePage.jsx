@@ -80,6 +80,7 @@ function InjectFonts() {
         text-transform: uppercase; color: #a8a898;
       }
 
+      /* ── FIX: Show add button always on touch devices (no hover on mobile) ── */
       .product-add-btn {
         opacity: 0; transform: translateY(6px);
         transition: opacity .25s, transform .25s;
@@ -87,12 +88,21 @@ function InjectFonts() {
       .card-root:hover .product-add-btn {
         opacity: 1; transform: translateY(0);
       }
+      @media (hover: none) {
+        .product-add-btn {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
       .cat-label {
         transform: translateY(4px);
         transition: transform .35s cubic-bezier(.22,1,.36,1);
       }
       .card-root:hover .cat-label { transform: translateY(0); }
+      @media (hover: none) {
+        .cat-label { transform: translateY(0); }
+      }
 
       .badge-pill {
         background: rgba(255,255,255,.92);
@@ -150,7 +160,8 @@ function ProductCard({ product, index = 0 }) {
   return (
     <Link
       to={`/products/${product._id}`}
-      className="card-root vault-body group block bg-white border border-[#ebebе3] rounded-2xl overflow-hidden hover:shadow-[0_20px_60px_rgba(26,26,20,.10)] transition-shadow duration-500"
+      // FIX: replaced Cyrillic "е" in #ebebе3 → correct Latin #ebebe3
+      className="card-root vault-body group block bg-white border border-[#ebebe3] rounded-2xl overflow-hidden hover:shadow-[0_20px_60px_rgba(26,26,20,.10)] transition-shadow duration-500"
       style={{ animationDelay: `${index * 0.07}s` }}
     >
       {/* Image */}
@@ -181,7 +192,7 @@ function ProductCard({ product, index = 0 }) {
           </div>
         )}
 
-        {/* Quick add */}
+        {/* Quick add — always visible on mobile via @media(hover:none) CSS above */}
         <button onClick={handleAdd}
           className="product-add-btn absolute bottom-3 right-3 h-9 px-4 rounded-xl bg-[#1a1a14] text-white text-[11px] font-medium tracking-wide flex items-center gap-2">
           <ShoppingBag size={13} /> Add
@@ -214,7 +225,8 @@ function CategoryCard({ cat }) {
   return (
     <Link
       to={`/products?category=${cat._id}`}
-      className="card-root group relative rounded-2xl overflow-hidden border border-[#e8e8e0] hover:border-[#ccccc0] aspect-[3/2.6] sm:aspect-[3/2.4] bg-white hover:shadow-[0_16px_48px_rgba(26,26,20,.12)] transition-all duration-500 active:scale-[0.98] block"
+      // FIX: better aspect ratio on mobile — was too tall at aspect-[3/2.6]
+      className="card-root group relative rounded-2xl overflow-hidden border border-[#e8e8e0] hover:border-[#ccccc0] aspect-[4/3] sm:aspect-[3/2.4] bg-white hover:shadow-[0_16px_48px_rgba(26,26,20,.12)] transition-all duration-500 active:scale-[0.98] block"
     >
       <div className="absolute inset-0">
         {cat.image?.url ? (
@@ -272,10 +284,8 @@ export default function HomePage() {
 
         {/* Background decorations */}
         <div className="pointer-events-none absolute inset-0" aria-hidden>
-          {/* large soft circle */}
           <div className="absolute -top-24 -right-24 w-[380px] h-[380px] sm:w-[560px] sm:h-[560px] lg:w-[700px] lg:h-[700px] rounded-full bg-[#e8e8e0]/35 blur-3xl" />
           <div className="absolute bottom-0 -left-16 w-[300px] h-[300px] sm:w-[440px] sm:h-[440px] rounded-full bg-[#f0ede3]/55 blur-3xl" />
-          {/* subtle grid */}
           <div className="absolute inset-0 opacity-[.028]"
             style={{ backgroundImage: 'linear-gradient(#1a1a14 1px,transparent 1px),linear-gradient(90deg,#1a1a14 1px,transparent 1px)', backgroundSize: '64px 64px' }} />
         </div>
@@ -304,8 +314,8 @@ export default function HomePage() {
               Vault curates only the finest. No filler — just products that genuinely deserve space in your life.
             </p>
 
-            {/* CTAs */}
-            <div className="vault-a4 flex flex-col xs:flex-row gap-3 sm:gap-4">
+            {/* CTAs — FIX: xs:flex-row doesn't exist in Tailwind, changed to sm:flex-row */}
+            <div className="vault-a4 flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Link to="/products"
                 className="btn-primary rounded-2xl px-7 sm:px-9 py-4 font-semibold text-[15px] inline-flex items-center justify-center gap-3 flex-shrink-0">
                 Shop Collection <ArrowRight size={18} />
@@ -317,7 +327,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Stats — pinned bottom on desktop, stacked below on mobile */}
+          {/* Stats */}
           <div className="vault-a5 mt-16 sm:mt-0 sm:absolute sm:bottom-12 sm:left-auto sm:right-12 lg:right-16 flex gap-8 sm:gap-12">
             {[["10K+", "Products"], ["50K+", "Customers"], ["99%", "Satisfaction"]].map(([num, label]) => (
               <div key={label} className="flex flex-col items-start sm:items-center">
@@ -358,7 +368,6 @@ export default function HomePage() {
       {/* ══ FEATURED PRODUCTS ══ */}
       <section className="pb-20 sm:pb-28 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto">
 
-        {/* Section header */}
         <div className="flex items-end justify-between mb-10 sm:mb-14">
           <div>
             <p className="section-label mb-2">Handpicked</p>
@@ -387,11 +396,9 @@ export default function HomePage() {
       {/* ══ CTA BANNER ══ */}
       <section className="mx-4 sm:mx-8 lg:mx-12 mb-20 sm:mb-28 rounded-3xl overflow-hidden bg-[#141410] relative">
 
-        {/* Texture overlay */}
         <div className="absolute inset-0 opacity-[.06]"
           style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-        {/* Accent blob */}
         <div className="absolute -top-20 right-10 w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-[#e8b520]/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 px-7 sm:px-12 md:px-16 py-16 sm:py-20 md:py-24 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-10">
