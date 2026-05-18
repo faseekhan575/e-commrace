@@ -1,35 +1,100 @@
 import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
-import { updateProduct, fetchProduct, fetchCategories } from "../../store/productsSlice";
+import { useNavigate } from "react-router-dom";
+import { createProduct, fetchCategories } from "../../store/productsSlice";
 import {
   Upload, X, Plus, Tag, Package, DollarSign,
-  Hash, FileText, Image, ChevronRight, CheckCircle, AlertCircle, Layers, ArrowLeft
+  Hash, FileText, Image, ChevronRight, CheckCircle,
+  AlertCircle, Layers, ArrowLeft
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const STEPS = ["Details", "Pricing", "Media", "Review"];
 
-export default function AdminEditProduct() {
-  const { id } = useParams();
+// ─── tiny helpers ─────────────────────────────────────────────────────────────
+const s = {
+  card: {
+    background: "#0c0c0c",
+    border: "1px solid #1a1a1a",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  label: {
+    display: "block",
+    fontSize: 10,
+    fontFamily: "monospace",
+    textTransform: "uppercase",
+    letterSpacing: "0.12em",
+    color: "#444",
+    marginBottom: 8,
+  },
+  inp: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: 12,
+    border: "1px solid #1a1a1a",
+    background: "#080808",
+    color: "#fff",
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    transition: "border-color .2s",
+  },
+  btnWhite: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 20px",
+    borderRadius: 10,
+    background: "#fff",
+    color: "#000",
+    fontWeight: 600,
+    fontSize: 13,
+    border: "none",
+    cursor: "pointer",
+    transition: "opacity .15s",
+  },
+  btnGhost: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 20px",
+    borderRadius: 10,
+    background: "transparent",
+    color: "#888",
+    fontWeight: 500,
+    fontSize: 13,
+    border: "1px solid #1a1a1a",
+    cursor: "pointer",
+    transition: "border-color .2s, color .2s",
+  },
+};
+
+function ErrMsg({ msg }) {
+  if (!msg) return null;
+  return (
+    <p style={{ fontSize: 11, color: "#ef4444", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+      <AlertCircle size={11} />{msg}
+    </p>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function AdminCreateProduct() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { categories, current: product } = useSelector((s) => s.products);
-  const { role } = useSelector((s) => s.auth);
+  const { categories } = useSelector((st) => st.products);
+  const { role } = useSelector((st) => st.auth);
   const basePath = role === "superadmin" ? "/superadmin" : "/admin";
-
-  const accent = role === "superadmin" ? "#f9c938" : "#e8b520";
-  const accentLight = role === "superadmin" ? "#f9c93815" : "#e8b52015";
-  const accentBorder = role === "superadmin" ? "#f9c93830" : "#e8b52030";
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
+  const [tagInput, setTagInput] = useState("");
+  const [errors, setErrors] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const [tagInput, setTagInput] = useState("");
   const [dragOver, setDragOver] = useState(false);
-  const [errors, setErrors] = useState({});
   const fileRef = useRef();
 
   const [form, setForm] = useState({
@@ -39,24 +104,7 @@ export default function AdminEditProduct() {
 
   useEffect(() => {
     dispatch(fetchCategories());
-    dispatch(fetchProduct(id)).finally(() => setFetching(false));
-  }, [dispatch, id]);
-
-  // Pre-fill form when product loads
-  useEffect(() => {
-    if (product && product._id === id) {
-      setForm({
-        title: product.title || "",
-        description: product.description || "",
-        price: product.price?.toString() || "",
-        discountPrice: product.discountPrice?.toString() || "",
-        stock: product.stock?.toString() || "",
-        category: product.category?._id || product.category || "",
-        tags: product.tags || [],
-      });
-      if (product.images?.[0]?.url) setImagePreview(product.images[0].url);
-    }
-  }, [product, id]);
+  }, [dispatch]);
 
   const set = (key, val) => {
     setForm((f) => ({ ...f, [key]: val }));
@@ -69,7 +117,6 @@ export default function AdminEditProduct() {
     set("tags", [...form.tags, t]);
     setTagInput("");
   };
-
   const removeTag = (tag) => set("tags", form.tags.filter((t) => t !== tag));
 
   const handleImage = (file) => {
@@ -88,9 +135,13 @@ export default function AdminEditProduct() {
       if (!form.category) e.category = "Category is required";
     }
     if (step === 1) {
-      if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price is required";
-      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock is required";
-      if (form.discountPrice && Number(form.discountPrice) >= Number(form.price)) e.discountPrice = "Discount must be less than price";
+      if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price required";
+      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock required";
+      if (form.discountPrice && Number(form.discountPrice) >= Number(form.price))
+        e.discountPrice = "Discount must be less than price";
+    }
+    if (step === 2) {
+      if (!imageFile) e.image = "At least one product image is required";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -110,14 +161,14 @@ export default function AdminEditProduct() {
       fd.append("stock", form.stock);
       fd.append("category", form.category);
       if (form.tags.length > 0) fd.append("tags", form.tags.join(","));
-      if (imageFile) fd.append("image", imageFile); // only send if changed
+      if (imageFile) fd.append("image", imageFile);
 
-      const res = await dispatch(updateProduct({ id, formData: fd }));
-      if (updateProduct.fulfilled.match(res)) {
-        toast.success("Product updated successfully!");
+      const res = await dispatch(createProduct(fd));
+      if (createProduct.fulfilled.match(res)) {
+        toast.success("Product created successfully!");
         navigate(`${basePath}/products`);
       } else {
-        toast.error(res.payload || "Failed to update product");
+        toast.error(res.payload || "Failed to create product");
       }
     } catch {
       toast.error("Something went wrong");
@@ -126,140 +177,188 @@ export default function AdminEditProduct() {
     }
   };
 
-  const inp = `w-full px-4 py-3 rounded-xl border bg-[#111] text-white text-sm outline-none transition-all duration-200 placeholder:text-[#444]`;
   const discount = form.price && form.discountPrice
     ? Math.round(((Number(form.price) - Number(form.discountPrice)) / Number(form.price)) * 100)
     : null;
 
-  if (fetching) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: accent }} />
-          <span className="text-white text-sm">Loading product...</span>
-        </div>
-      </div>
-    );
-  }
+  const inputStyle = (key) => ({
+    ...s.inp,
+    borderColor: errors[key] ? "#ef4444" : form[key] ? "#333" : "#1a1a1a",
+  });
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-body pb-20">
-      {/* Header */}
-      <div className="mb-8">
-        <button onClick={() => navigate(`${basePath}/products`)}
-          className="flex items-center gap-1.5 text-xs mb-4 hover:text-white transition-colors"
-          style={{ color: "#525252" }}>
+    <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 80, color: "#fff", fontFamily: "inherit" }}>
+
+      {/* ── Header ── */}
+      <div style={{ marginBottom: 32 }}>
+        <button
+          onClick={() => navigate(`${basePath}/products`)}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 12, color: "#444", background: "none",
+            border: "none", cursor: "pointer", marginBottom: 16, padding: 0,
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
+          onMouseLeave={(e) => e.currentTarget.style.color = "#444"}
+        >
           <ArrowLeft size={13} /> Back to Products
         </button>
-        <div className="flex items-center gap-2 text-xs font-mono mb-4" style={{ color: "#525252" }}>
-          <span>Products</span>
-          <ChevronRight size={12} />
-          <span style={{ color: accent }}>Edit Product</span>
-        </div>
-        <h1 className="font-display text-3xl font-700 text-white">Edit Product</h1>
-        <p className="text-sm text-[#525252] mt-1">Update the product details below.</p>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#fff", margin: 0 }}>Create Product</h1>
+        <p style={{ fontSize: 13, color: "#444", marginTop: 6 }}>Fill in the details to add a new product.</p>
       </div>
 
-      {/* Step Indicator */}
-      <div className="flex items-center gap-0 mb-10">
+      {/* ── Step Indicator ── */}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
         {STEPS.map((label, i) => (
-          <div key={label} className="flex items-center flex-1 last:flex-none">
-            <div className="flex flex-col items-center">
+          <div key={label} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : "none" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 cursor-pointer"
-                style={{
-                  backgroundColor: i < step ? accent : i === step ? accentLight : "transparent",
-                  borderColor: i <= step ? accent : "#1e1e1e",
-                  color: i < step ? "#000" : i === step ? accent : "#525252",
-                }}
                 onClick={() => i < step && setStep(i)}
+                style={{
+                  width: 34, height: 34, borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 700,
+                  border: `2px solid ${i <= step ? "#fff" : "#1a1a1a"}`,
+                  background: i < step ? "#fff" : i === step ? "#111" : "transparent",
+                  color: i < step ? "#000" : i === step ? "#fff" : "#333",
+                  cursor: i < step ? "pointer" : "default",
+                  transition: "all .3s",
+                }}
               >
-                {i < step ? <CheckCircle size={16} /> : i + 1}
+                {i < step ? <CheckCircle size={15} color="#000" /> : i + 1}
               </div>
-              <span className="text-[10px] mt-1.5 font-mono uppercase tracking-widest"
-                style={{ color: i === step ? accent : i < step ? "#787878" : "#333" }}>
+              <span style={{
+                fontSize: 9, marginTop: 6,
+                fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em",
+                color: i === step ? "#fff" : i < step ? "#555" : "#2a2a2a",
+              }}>
                 {label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className="flex-1 h-[1px] mx-2 mb-4 transition-all duration-500"
-                style={{ backgroundColor: i < step ? accent : "#1e1e1e" }} />
+              <div style={{
+                flex: 1, height: 1, marginBottom: 18, marginLeft: 8, marginRight: 8,
+                background: i < step ? "#fff" : "#1a1a1a",
+                transition: "background .4s",
+              }} />
             )}
           </div>
         ))}
       </div>
 
-      {/* Card */}
-      <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+      {/* ── Card ── */}
+      <div style={s.card}>
 
         {/* STEP 0 — Details */}
         {step === 0 && (
-          <div className="p-8 space-y-6 animate-fade-in">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText size={16} style={{ color: accent }} />
-              <h2 className="font-semibold text-white">Product Details</h2>
+          <div style={{ padding: "28px 32px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+              <FileText size={15} color="#fff" />
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Product Details</h2>
             </div>
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#525252" }}>
-                Product Title <span className="text-red-500">*</span>
-              </label>
-              <input value={form.title} onChange={(e) => set("title", e.target.value)}
-                placeholder="e.g. iPhone 15 Pro Max" className={inp}
-                style={{ borderColor: errors.title ? "#ef4444" : form.title ? accent : "#1e1e1e" }} />
-              {errors.title && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle size={11} />{errors.title}</p>}
+
+            {/* Title */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={s.label}>Title <span style={{ color: "#ef4444" }}>*</span></label>
+              <input
+                value={form.title}
+                onChange={(e) => set("title", e.target.value)}
+                placeholder="e.g. iPhone 15 Pro Max"
+                style={inputStyle("title")}
+                onFocus={(e) => e.target.style.borderColor = "#fff"}
+                onBlur={(e) => e.target.style.borderColor = errors.title ? "#ef4444" : form.title ? "#333" : "#1a1a1a"}
+              />
+              <ErrMsg msg={errors.title} />
             </div>
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#525252" }}>
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea rows={5} value={form.description} onChange={(e) => set("description", e.target.value)}
-                placeholder="Describe the product..." className={`${inp} resize-none`}
-                style={{ borderColor: errors.description ? "#ef4444" : form.description ? accent : "#1e1e1e" }} />
-              <div className="flex justify-between mt-1">
-                {errors.description ? <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.description}</p> : <span />}
-                <span className="text-xs text-[#333]">{form.description.length} chars</span>
+
+            {/* Description */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={s.label}>Description <span style={{ color: "#ef4444" }}>*</span></label>
+              <textarea
+                rows={5}
+                value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+                placeholder="Describe the product…"
+                style={{ ...inputStyle("description"), resize: "none" }}
+                onFocus={(e) => e.target.style.borderColor = "#fff"}
+                onBlur={(e) => e.target.style.borderColor = errors.description ? "#ef4444" : form.description ? "#333" : "#1a1a1a"}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                <ErrMsg msg={errors.description} />
+                <span style={{ fontSize: 10, color: "#2a2a2a", marginLeft: "auto" }}>{form.description.length}</span>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#525252" }}>
-                Category <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+
+            {/* Category */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={s.label}>Category <span style={{ color: "#ef4444" }}>*</span></label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
                 {categories.map((cat) => (
-                  <button key={cat._id} type="button" onClick={() => set("category", cat._id)}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200"
+                  <button
+                    key={cat._id}
+                    type="button"
+                    onClick={() => set("category", cat._id)}
                     style={{
-                      backgroundColor: form.category === cat._id ? accentLight : "transparent",
-                      borderColor: form.category === cat._id ? accent : "#1e1e1e",
-                      color: form.category === cat._id ? accent : "#787878",
-                    }}>
-                    {cat.image?.url && <img src={cat.image.url} className="w-5 h-5 rounded object-cover" alt="" />}
-                    <span className="truncate">{cat.name}</span>
-                    {form.category === cat._id && <CheckCircle size={13} className="ml-auto flex-shrink-0" />}
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: `1px solid ${form.category === cat._id ? "#fff" : "#1a1a1a"}`,
+                      background: form.category === cat._id ? "#111" : "transparent",
+                      color: form.category === cat._id ? "#fff" : "#444",
+                      fontSize: 12, fontWeight: 500,
+                      cursor: "pointer", transition: "all .2s",
+                    }}
+                  >
+                    {cat.image?.url && <img src={cat.image.url} style={{ width: 18, height: 18, borderRadius: 4, objectFit: "cover" }} alt="" />}
+                    <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.name}</span>
+                    {form.category === cat._id && <CheckCircle size={11} color="#fff" />}
                   </button>
                 ))}
               </div>
-              {errors.category && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle size={11} />{errors.category}</p>}
+              <ErrMsg msg={errors.category} />
             </div>
+
+            {/* Tags */}
             <div>
-              <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#525252" }}>Tags</label>
-              <div className="flex gap-2">
-                <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
+              <label style={s.label}>Tags</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                  placeholder="Type a tag and press Enter" className={`${inp} flex-1`}
-                  style={{ borderColor: "#1e1e1e" }} />
-                <button type="button" onClick={addTag} className="px-4 py-3 rounded-xl border text-sm font-medium"
-                  style={{ borderColor: accent, color: accent, backgroundColor: accentLight }}>
-                  <Plus size={16} />
+                  placeholder="Type a tag + Enter"
+                  style={{ ...s.inp, flex: 1 }}
+                  onFocus={(e) => e.target.style.borderColor = "#fff"}
+                  onBlur={(e) => e.target.style.borderColor = "#1a1a1a"}
+                />
+                <button
+                  type="button"
+                  onClick={addTag}
+                  style={{ ...s.btnGhost, padding: "10px 14px" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#fff"; e.currentTarget.style.color = "#fff"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1a1a1a"; e.currentTarget.style.color = "#888"; }}
+                >
+                  <Plus size={15} />
                 </button>
               </div>
               {form.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
                   {form.tags.map((tag) => (
-                    <span key={tag} className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border"
-                      style={{ backgroundColor: accentLight, borderColor: accentBorder, color: accent }}>
-                      <Tag size={10} />{tag}
-                      <button onClick={() => removeTag(tag)} className="hover:text-red-400 ml-0.5"><X size={11} /></button>
+                    <span key={tag} style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      padding: "5px 12px", borderRadius: 999,
+                      background: "#111", border: "1px solid #222",
+                      color: "#888", fontSize: 12,
+                    }}>
+                      <Tag size={9} />{tag}
+                      <button
+                        onClick={() => removeTag(tag)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#555", padding: 0, display: "flex" }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#ef4444"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#555"}
+                      >
+                        <X size={10} />
+                      </button>
                     </span>
                   ))}
                 </div>
@@ -270,67 +369,106 @@ export default function AdminEditProduct() {
 
         {/* STEP 1 — Pricing */}
         {step === 1 && (
-          <div className="p-8 space-y-6 animate-fade-in">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign size={16} style={{ color: accent }} />
-              <h2 className="font-semibold text-white">Pricing & Stock</h2>
+          <div style={{ padding: "28px 32px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+              <DollarSign size={15} color="#fff" />
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Pricing & Stock</h2>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {/* Price */}
               <div>
-                <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#525252" }}>
-                  Original Price (₨) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-mono" style={{ color: "#525252" }}>₨</span>
-                  <input type="number" min="0" value={form.price} onChange={(e) => set("price", e.target.value)}
-                    placeholder="250000" className={`${inp} pl-9`}
-                    style={{ borderColor: errors.price ? "#ef4444" : form.price ? accent : "#1e1e1e" }} />
+                <label style={s.label}>Price (₨) <span style={{ color: "#ef4444" }}>*</span></label>
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#444", fontFamily: "monospace" }}>₨</span>
+                  <input
+                    type="number" min="0"
+                    value={form.price}
+                    onChange={(e) => set("price", e.target.value)}
+                    placeholder="250000"
+                    style={{ ...inputStyle("price"), paddingLeft: 34 }}
+                    onFocus={(e) => e.target.style.borderColor = "#fff"}
+                    onBlur={(e) => e.target.style.borderColor = errors.price ? "#ef4444" : form.price ? "#333" : "#1a1a1a"}
+                  />
                 </div>
-                {errors.price && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle size={11} />{errors.price}</p>}
+                <ErrMsg msg={errors.price} />
               </div>
+
+              {/* Discount */}
               <div>
-                <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#525252" }}>
-                  Discount Price (₨) <span className="text-[#333]">optional</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-mono" style={{ color: "#525252" }}>₨</span>
-                  <input type="number" min="0" value={form.discountPrice} onChange={(e) => set("discountPrice", e.target.value)}
-                    placeholder="230000" className={`${inp} pl-9`}
-                    style={{ borderColor: errors.discountPrice ? "#ef4444" : form.discountPrice ? accent : "#1e1e1e" }} />
+                <label style={s.label}>Discount Price (₨) <span style={{ color: "#2a2a2a" }}>optional</span></label>
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#444", fontFamily: "monospace" }}>₨</span>
+                  <input
+                    type="number" min="0"
+                    value={form.discountPrice}
+                    onChange={(e) => set("discountPrice", e.target.value)}
+                    placeholder="230000"
+                    style={{ ...inputStyle("discountPrice"), paddingLeft: 34 }}
+                    onFocus={(e) => e.target.style.borderColor = "#fff"}
+                    onBlur={(e) => e.target.style.borderColor = errors.discountPrice ? "#ef4444" : form.discountPrice ? "#333" : "#1a1a1a"}
+                  />
                 </div>
-                {errors.discountPrice && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle size={11} />{errors.discountPrice}</p>}
-                {discount && !errors.discountPrice && (
-                  <p className="text-xs mt-1.5 flex items-center gap-1" style={{ color: accent }}><CheckCircle size={11} />{discount}% discount applied</p>
+                <ErrMsg msg={errors.discountPrice} />
+                {discount > 0 && !errors.discountPrice && (
+                  <p style={{ fontSize: 11, color: "#34d399", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                    <CheckCircle size={11} /> {discount}% off applied
+                  </p>
                 )}
               </div>
+
+              {/* Stock */}
               <div>
-                <label className="block text-xs font-mono uppercase tracking-widest mb-2" style={{ color: "#525252" }}>
-                  Stock Quantity <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Hash size={14} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: "#525252" }} />
-                  <input type="number" min="0" value={form.stock} onChange={(e) => set("stock", e.target.value)}
-                    placeholder="10" className={`${inp} pl-9`}
-                    style={{ borderColor: errors.stock ? "#ef4444" : form.stock ? accent : "#1e1e1e" }} />
+                <label style={s.label}>Stock <span style={{ color: "#ef4444" }}>*</span></label>
+                <div style={{ position: "relative" }}>
+                  <Hash size={13} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#444" }} />
+                  <input
+                    type="number" min="0"
+                    value={form.stock}
+                    onChange={(e) => set("stock", e.target.value)}
+                    placeholder="10"
+                    style={{ ...inputStyle("stock"), paddingLeft: 34 }}
+                    onFocus={(e) => e.target.style.borderColor = "#fff"}
+                    onBlur={(e) => e.target.style.borderColor = errors.stock ? "#ef4444" : form.stock ? "#333" : "#1a1a1a"}
+                  />
                 </div>
-                {errors.stock && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle size={11} />{errors.stock}</p>}
+                <ErrMsg msg={errors.stock} />
               </div>
             </div>
+
+            {/* Preview */}
             {form.price && (
-              <div className="rounded-2xl border p-5" style={{ borderColor: accentBorder, backgroundColor: accentLight }}>
-                <p className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: accent }}>Price Preview</p>
-                <div className="flex items-center gap-4 flex-wrap">
+              <div style={{
+                marginTop: 20, padding: "18px 20px",
+                borderRadius: 12, border: "1px solid #1a1a1a",
+                background: "#080808",
+              }}>
+                <p style={{ ...s.label, marginBottom: 12 }}>Price preview</p>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                   {form.discountPrice && Number(form.discountPrice) < Number(form.price) ? (
                     <>
-                      <span className="font-display text-3xl font-700 text-white">₨ {Number(form.discountPrice).toLocaleString()}</span>
-                      <span className="text-lg text-[#525252] line-through">₨ {Number(form.price).toLocaleString()}</span>
-                      <span className="px-3 py-1 rounded-full text-xs font-bold text-black" style={{ backgroundColor: accent }}>-{discount}% OFF</span>
+                      <span style={{ fontSize: 26, fontWeight: 700, color: "#fff" }}>
+                        ₨ {Number(form.discountPrice).toLocaleString()}
+                      </span>
+                      <span style={{ fontSize: 15, color: "#333", textDecoration: "line-through" }}>
+                        ₨ {Number(form.price).toLocaleString()}
+                      </span>
+                      <span style={{
+                        padding: "3px 10px", borderRadius: 999, fontSize: 11,
+                        fontWeight: 700, background: "#fff", color: "#000",
+                      }}>-{discount}%</span>
                     </>
                   ) : (
-                    <span className="font-display text-3xl font-700 text-white">₨ {Number(form.price).toLocaleString()}</span>
+                    <span style={{ fontSize: 26, fontWeight: 700, color: "#fff" }}>
+                      ₨ {Number(form.price).toLocaleString()}
+                    </span>
                   )}
                 </div>
-                {form.stock && <p className="text-xs text-[#787878] mt-3 flex items-center gap-1.5"><Layers size={11} />{form.stock} units in stock</p>}
+                {form.stock && (
+                  <p style={{ fontSize: 12, color: "#444", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Layers size={11} /> {form.stock} units in stock
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -338,153 +476,234 @@ export default function AdminEditProduct() {
 
         {/* STEP 2 — Media */}
         {step === 2 && (
-          <div className="p-8 animate-fade-in">
-            <div className="flex items-center gap-2 mb-6">
-              <Image size={16} style={{ color: accent }} />
-              <h2 className="font-semibold text-white">Product Image</h2>
-              <span className="text-xs text-[#525252] ml-2">(leave unchanged to keep current image)</span>
+          <div style={{ padding: "28px 32px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+              <Image size={15} color="#fff" />
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Product Image</h2>
             </div>
+
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleImage(f); }}
               onClick={() => !imagePreview && fileRef.current?.click()}
-              className="relative rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden"
               style={{
-                borderColor: dragOver ? accent : imagePreview ? accent : "#1e1e1e",
-                backgroundColor: dragOver ? accentLight : "transparent",
-                minHeight: "340px",
-              }}>
+                borderRadius: 14,
+                border: `2px dashed ${dragOver ? "#fff" : imagePreview ? "#fff" : "#222"}`,
+                background: dragOver ? "#111" : "transparent",
+                minHeight: 300,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: imagePreview ? "default" : "pointer",
+                transition: "border-color .2s, background .2s",
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
               {imagePreview ? (
-                <div className="relative w-full h-full">
-                  <img src={imagePreview} alt="preview" className="w-full h-80 object-contain p-4" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-                      className="px-5 py-2.5 rounded-xl text-sm font-semibold text-black" style={{ backgroundColor: accent }}>
+                <div style={{ position: "relative", width: "100%" }}>
+                  <img src={imagePreview} alt="preview" style={{ width: "100%", height: 280, objectFit: "contain", padding: 16, boxSizing: "border-box" }} />
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    background: "rgba(0,0,0,0.6)",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+                    opacity: 0, transition: "opacity .2s",
+                  }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+                      style={{ ...s.btnWhite }}
+                    >
                       Change Image
                     </button>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setImagePreview(null); setImageFile(null); }}
-                      className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#1e1e1e] hover:bg-[#333]">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setImagePreview(null); setImageFile(null); }}
+                      style={{ ...s.btnGhost, borderColor: "#fff", color: "#fff" }}
+                    >
                       Remove
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-80 gap-4">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center border"
-                    style={{ borderColor: accentBorder, backgroundColor: accentLight }}>
-                    <Upload size={26} style={{ color: accent }} />
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: 32 }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 14,
+                    border: "1px solid #222", background: "#0d0d0d",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Upload size={24} color="#444" />
                   </div>
-                  <div className="text-center">
-                    <p className="text-white font-medium mb-1">Drop new image or click to upload</p>
-                    <p className="text-xs text-[#525252]">PNG, JPG, WEBP — leave empty to keep current</p>
+                  <div style={{ textAlign: "center" }}>
+                    <p style={{ color: "#fff", fontWeight: 500, margin: 0, marginBottom: 6 }}>Drop image or click to upload</p>
+                    <p style={{ fontSize: 11, color: "#444", margin: 0 }}>PNG, JPG, WEBP supported</p>
                   </div>
                 </div>
               )}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImage(f); }} />
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImage(f); }}
+            />
+
             {imageFile && (
-              <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: accent }}>
-                <CheckCircle size={13} /> New image selected
-              </div>
+              <p style={{ fontSize: 11, color: "#34d399", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                <CheckCircle size={12} /> Image selected — will upload on create
+              </p>
             )}
-            {!imageFile && imagePreview && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-[#525252]">
-                <CheckCircle size={13} /> Using existing image
-              </div>
-            )}
+            <ErrMsg msg={errors.image} />
           </div>
         )}
 
         {/* STEP 3 — Review */}
         {step === 3 && (
-          <div className="p-8 animate-fade-in">
-            <div className="flex items-center gap-2 mb-6">
-              <Package size={16} style={{ color: accent }} />
-              <h2 className="font-semibold text-white">Review & Save</h2>
+          <div style={{ padding: "28px 32px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+              <Package size={15} color="#fff" />
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Review & Create</h2>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
               {imagePreview && (
-                <div className="rounded-2xl overflow-hidden border border-[#1e1e1e] aspect-square">
-                  <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+                <div style={{
+                  borderRadius: 14, overflow: "hidden",
+                  border: "1px solid #1a1a1a",
+                  aspectRatio: "1",
+                  background: "#080808",
+                }}>
+                  <img src={imagePreview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
               )}
-              <div className="space-y-4">
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <p className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: "#525252" }}>Title</p>
-                  <p className="text-white font-semibold text-lg">{form.title}</p>
+                  <p style={s.label}>Title</p>
+                  <p style={{ color: "#fff", fontWeight: 600, fontSize: 16, margin: 0 }}>{form.title}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: "#525252" }}>Category</p>
-                  <p className="text-white text-sm">{categories.find((c) => c._id === form.category)?.name || "—"}</p>
+                  <p style={s.label}>Category</p>
+                  <p style={{ color: "#888", fontSize: 13, margin: 0 }}>
+                    {categories.find((c) => c._id === form.category)?.name || "—"}
+                  </p>
                 </div>
-                <div className="flex items-baseline gap-3">
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                   {form.discountPrice && Number(form.discountPrice) < Number(form.price) ? (
                     <>
-                      <span className="font-display text-2xl font-700 text-white">₨ {Number(form.discountPrice).toLocaleString()}</span>
-                      <span className="text-[#525252] line-through text-sm">₨ {Number(form.price).toLocaleString()}</span>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full text-black" style={{ backgroundColor: accent }}>-{discount}%</span>
+                      <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>
+                        ₨ {Number(form.discountPrice).toLocaleString()}
+                      </span>
+                      <span style={{ fontSize: 13, color: "#333", textDecoration: "line-through" }}>
+                        ₨ {Number(form.price).toLocaleString()}
+                      </span>
+                      <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#fff", color: "#000" }}>
+                        -{discount}%
+                      </span>
                     </>
                   ) : (
-                    <span className="font-display text-2xl font-700 text-white">₨ {Number(form.price || 0).toLocaleString()}</span>
+                    <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>
+                      ₨ {Number(form.price || 0).toLocaleString()}
+                    </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${Number(form.stock) > 0 ? "bg-green-500" : "bg-red-500"}`} />
-                  <span className="text-sm text-[#787878]">{form.stock} units in stock</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: Number(form.stock) > 0 ? "#34d399" : "#ef4444" }} />
+                  <span style={{ fontSize: 12, color: "#888" }}>{form.stock} units in stock</span>
                 </div>
                 {form.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {form.tags.map((tag) => (
-                      <span key={tag} className="px-2.5 py-1 rounded-full text-xs border"
-                        style={{ borderColor: accentBorder, color: accent, backgroundColor: accentLight }}>#{tag}</span>
+                      <span key={tag} style={{
+                        padding: "4px 10px", borderRadius: 999,
+                        background: "#111", border: "1px solid #1a1a1a",
+                        color: "#555", fontSize: 11,
+                      }}>#{tag}</span>
                     ))}
                   </div>
                 )}
                 <div>
-                  <p className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: "#525252" }}>Description</p>
-                  <p className="text-[#787878] text-sm leading-relaxed line-clamp-4">{form.description}</p>
+                  <p style={s.label}>Description</p>
+                  <p style={{
+                    color: "#555", fontSize: 13, lineHeight: 1.6, margin: 0,
+                    display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden",
+                  }}>
+                    {form.description}
+                  </p>
                 </div>
               </div>
             </div>
-            <div className="mt-8 pt-6 border-t border-[#1e1e1e] flex items-center justify-between">
-              <p className="text-xs text-[#525252]">Review changes before saving.</p>
-              <button onClick={handleSubmit} disabled={loading}
-                className="flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50"
-                style={{ backgroundColor: accent, color: "#000" }}>
+
+            {/* Create button */}
+            <div style={{
+              marginTop: 28, paddingTop: 20,
+              borderTop: "1px solid #1a1a1a",
+              display: "flex", alignItems: "center", justifyContent: "flex-end",
+            }}>
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                style={{ ...s.btnWhite, opacity: loading ? 0.6 : 1, minWidth: 160, justifyContent: "center" }}
+              >
                 {loading ? (
-                  <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />Saving...</>
+                  <>
+                    <div style={{
+                      width: 14, height: 14,
+                      border: "2px solid rgba(0,0,0,0.3)",
+                      borderTopColor: "#000",
+                      borderRadius: "50%",
+                      animation: "spin 0.7s linear infinite",
+                    }} />
+                    Creating…
+                  </>
                 ) : (
-                  <><CheckCircle size={16} />Save Changes</>
+                  <><CheckCircle size={15} /> Create Product</>
                 )}
               </button>
             </div>
           </div>
         )}
 
-        {/* Nav Buttons */}
+        {/* Nav buttons */}
         {step < 3 && (
-          <div className="px-8 pb-8 flex justify-between items-center border-t border-[#1e1e1e] pt-6">
-            <button onClick={prevStep} disabled={step === 0}
-              className="px-6 py-2.5 rounded-xl border text-sm font-medium transition-all disabled:opacity-30"
-              style={{ borderColor: "#1e1e1e", color: "#787878" }}>
+          <div style={{
+            padding: "16px 32px 24px",
+            borderTop: "1px solid #1a1a1a",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <button
+              onClick={prevStep}
+              disabled={step === 0}
+              style={{ ...s.btnGhost, opacity: step === 0 ? 0.3 : 1 }}
+            >
               Back
             </button>
-            <div className="flex items-center gap-2">
+
+            <div style={{ display: "flex", gap: 6 }}>
               {STEPS.map((_, i) => (
-                <div key={i} className="h-1.5 rounded-full transition-all duration-300"
-                  style={{ backgroundColor: i === step ? accent : i < step ? "#525252" : "#1e1e1e", width: i === step ? "20px" : "6px" }} />
+                <div key={i} style={{
+                  height: 5, borderRadius: 999,
+                  background: i === step ? "#fff" : i < step ? "#333" : "#1a1a1a",
+                  width: i === step ? 20 : 5,
+                  transition: "all .3s",
+                }} />
               ))}
             </div>
-            <button onClick={nextStep}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ backgroundColor: accent, color: "#000" }}>
-              Continue <ChevronRight size={15} />
+
+            <button onClick={nextStep} style={s.btnWhite}>
+              Continue <ChevronRight size={14} />
             </button>
           </div>
         )}
       </div>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
