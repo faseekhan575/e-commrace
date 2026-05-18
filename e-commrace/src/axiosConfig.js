@@ -12,11 +12,11 @@ instance.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── RESPONSE: auto clear bad/expired token ──────────────────
+// ─── RESPONSE: auto clear token only on 401 ─────────────────
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 500) {
+    if (error.response?.status === 401) {
       localStorage.removeItem("accessToken");
     }
     return Promise.reject(error);
