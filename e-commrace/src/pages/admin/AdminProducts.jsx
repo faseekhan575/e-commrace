@@ -26,10 +26,8 @@ export default function AdminProducts() {
 
   const { role } = useSelector((s) => s.auth);
 
-  const basePath =
-    role === "superadmin"
-      ? "/superadmin"
-      : "/admin";
+ 
+   const basePath = "/admin";
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
