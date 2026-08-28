@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser, clearError, setOtpPending } from "../../store/authSlice";
+import GoogleAuthButton from "../../components/GoogleAuthButton";
+import BrandLogo from "../../components/BrandLogo";
 import { Eye, EyeOff, ArrowRight, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -191,31 +193,30 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div className="relative z-10">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[17px] border-b-white" />
-            <span className="vr-display text-white text-2xl font-bold tracking-[0.25em]">VAULT</span>
+          <Link to="/" className="flex items-center">
+            <BrandLogo variant="horizontal" theme="dark" size={44} showTagline={true} />
           </Link>
         </div>
 
         {/* Center quote */}
         <div className="relative z-10">
-          <div className="w-8 h-px bg-white/30 mb-6" />
+          <div className="w-8 h-px bg-[#d4af37] mb-6" />
           <p className="vr-display text-white text-4xl xl:text-5xl font-light leading-[1.1] mb-4">
-            Every<br />
-            <em className="not-italic text-white/50">piece</em><br />
-            curated.
+            Fashion<br />
+            <em className="not-italic text-[#d4af37]">that</em><br />
+            speaks.
           </p>
-          <p className="text-white/40 text-sm leading-relaxed max-w-xs">
-            Join thousands of discerning shoppers who trust Vault for premium, handpicked selections.
+          <p className="text-white/60 text-sm leading-relaxed max-w-xs font-serif">
+            Join the Clothing Den VIP circle for exclusive drops, tailored luxury lawn, and festive pret.
           </p>
         </div>
 
         {/* Bottom stats */}
         <div className="relative z-10 flex gap-8">
-          {[["50K+","Members"],["99%","Satisfaction"],["10K+","Products"]].map(([n,l]) => (
+          {[["100%","Pure Lawn"],["24H","Dispatch"],["Nationwide","Delivery"]].map(([n,l]) => (
             <div key={l}>
-              <p className="vr-display text-white text-2xl font-bold">{n}</p>
-              <p className="text-white/40 text-[11px] tracking-widest uppercase mt-0.5">{l}</p>
+              <p className="vr-display text-white text-2xl font-bold font-mono">{n}</p>
+              <p className="text-[#d4af37] text-[10px] tracking-widest uppercase mt-0.5 font-mono">{l}</p>
             </div>
           ))}
         </div>
@@ -226,9 +227,10 @@ export default function RegisterPage() {
         <div className="w-full max-w-[420px]">
 
           {/* Mobile logo */}
-          <div className="vr-a1 flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[14px] border-b-[#1a1a14]" />
-            <span className="vr-display text-[#1a1a14] text-lg font-bold tracking-[0.2em]">VAULT</span>
+          <div className="vr-a1 flex items-center mb-8 lg:hidden">
+            <Link to="/">
+              <BrandLogo variant="horizontal" size={36} showTagline={true} />
+            </Link>
           </div>
 
           {/* Heading */}
@@ -337,6 +339,23 @@ export default function RegisterPage() {
                   )}
                 </span>
               </button>
+            </div>
+
+            {/* Divider */}
+            <div className="vr-a5 flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-[#e8e8e0]" />
+              <span className="text-[11px] font-mono uppercase tracking-widest text-[#a8a898]">or</span>
+              <div className="flex-1 h-px bg-[#e8e8e0]" />
+            </div>
+
+            {/* Google One-Click Sign In */}
+            <div className="vr-a5">
+              <GoogleAuthButton
+                label="Sign up with Google"
+                onSuccessCallback={(res) => {
+                  navigate("/");
+                }}
+              />
             </div>
           </form>
 

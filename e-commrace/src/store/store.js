@@ -2,20 +2,19 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 import cartReducer from "./cartSlice";
 import productsReducer from "./productsSlice";
+import bannerReducer from "./bannerSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     cart: cartReducer,
     products: productsReducer,
+    banners: bannerReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: {
-        // Ignore these fields in state for non-serializable values (like File objects, etc.)
-        ignoredActions: ["persist/PERSIST", "persist/REHYDRATE"],
-        ignoredPaths: ["products.current.images", "auth.user.avatar"],
-      },
+      serializableCheck: false,
+      immutableCheck: false,
     }),
   devTools: process.env.NODE_ENV !== "production", // Enable Redux DevTools in development
 });

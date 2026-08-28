@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, clearError } from "../../store/authSlice";
+import GoogleAuthButton from "../../components/GoogleAuthButton";
+import BrandLogo from "../../components/BrandLogo";
 import { Eye, EyeOff, ArrowRight, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -42,11 +44,11 @@ function InjectFonts() {
 }
 
 /* ── Floating Label Input (same style as RegisterPage) ── */
-function FloatInput({ id, label, type = "text", value, onChange, error, children }) {
+function FloatInput({ id, label, type = "text", value = "", onChange, required, children, error }) {
   const [focused, setFocused] = useState(false);
-  const lifted = focused || value.length > 0;
+  const lifted = focused || (value && value.length > 0);
   return (
-    <div>
+    <div className="relative">
       <div
         className="relative w-full rounded-2xl overflow-hidden transition-all duration-200"
         style={{
@@ -71,13 +73,13 @@ function FloatInput({ id, label, type = "text", value, onChange, error, children
         <input
           id={id}
           type={type}
+          required={required}
           value={value}
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder=""
-          required
-          className="w-full bg-transparent text-[#1a1a14] text-sm outline-none"
+          className="w-full bg-transparent text-[#1a1a14] text-sm outline-none font-medium"
           style={{ padding: "26px 44px 10px 16px" }}
         />
         {children && (
@@ -115,10 +117,18 @@ export default function LoginPage() {
 
     const result = await dispatch(loginUser(form));
     if (loginUser.fulfilled.match(result)) {
-      const { role } = result.payload;
-      const redirect = ROLE_REDIRECT[role] || "/";
-      toast.success("Welcome back!");
-      navigate(redirect);
+      const payload = result.payload || {};
+      const user = payload.user || payload;
+      const role = user.role || payload.role || "user";
+      const isAdmin = role === "admin" || role === "superadmin";
+
+      if (isAdmin) {
+        toast.success("Welcome to Clothing Den Admin Center!");
+        navigate("/admin", { replace: true });
+      } else {
+        toast.success("Welcome back!");
+        navigate("/", { replace: true });
+      }
     } else {
       setLocalError(result.payload || "Invalid credentials");
     }
@@ -158,31 +168,30 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="relative z-10">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[17px] border-b-white" />
-            <span className="vl-display text-white text-2xl font-bold tracking-[0.25em]">VAULT</span>
+          <Link to="/" className="flex items-center">
+            <BrandLogo variant="horizontal" theme="dark" size={44} showTagline={true} />
           </Link>
         </div>
 
         {/* Center quote */}
         <div className="relative z-10">
-          <div className="w-8 h-px bg-white/30 mb-6" />
+          <div className="w-8 h-px bg-[#d4af37] mb-6" />
           <p className="vl-display text-white text-4xl xl:text-5xl font-light leading-[1.1] mb-4">
             Welcome<br />
-            <em className="not-italic text-white/50">back</em><br />
-            to Vault.
+            <em className="not-italic text-[#d4af37]">back</em><br />
+            to Clothing Den.
           </p>
-          <p className="text-white/40 text-sm leading-relaxed max-w-xs">
-            Sign in and we'll take you exactly where you belong — whether that's your cart, your dashboard, or your command center.
+          <p className="text-white/60 text-sm leading-relaxed max-w-xs font-serif">
+            Fashion that speaks — eastern couture and contemporary luxury silhouettes.
           </p>
         </div>
 
         {/* Bottom stats */}
         <div className="relative z-10 flex gap-8">
-          {[["50K+","Members"],["99%","Satisfaction"],["10K+","Products"]].map(([n,l]) => (
+          {[["100%","Pure Lawn"],["24H","Dispatch"],["Nationwide","Delivery"]].map(([n,l]) => (
             <div key={l}>
-              <p className="vl-display text-white text-2xl font-bold">{n}</p>
-              <p className="text-white/40 text-[11px] tracking-widest uppercase mt-0.5">{l}</p>
+              <p className="vl-display text-white text-2xl font-bold font-mono">{n}</p>
+              <p className="text-[#d4af37] text-[10px] tracking-widest uppercase mt-0.5 font-mono">{l}</p>
             </div>
           ))}
         </div>
@@ -193,9 +202,10 @@ export default function LoginPage() {
         <div className="w-full max-w-[420px]">
 
           {/* Mobile logo */}
-          <div className="vl-a1 flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[14px] border-b-[#1a1a14]" />
-            <span className="vl-display text-[#1a1a14] text-lg font-bold tracking-[0.2em]">VAULT</span>
+          <div className="vl-a1 flex items-center mb-8 lg:hidden">
+            <Link to="/">
+              <BrandLogo variant="horizontal" size={36} showTagline={true} />
+            </Link>
           </div>
 
           {/* Heading */}
@@ -274,6 +284,26 @@ export default function LoginPage() {
                   )}
                 </span>
               </button>
+            </div>
+
+            {/* Divider */}
+            <div className="vl-a4 flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-[#e8e8e0]" />
+              <span className="text-[11px] font-mono uppercase tracking-widest text-[#a8a898]">or</span>
+              <div className="flex-1 h-px bg-[#e8e8e0]" />
+            </div>
+
+            {/* Google One-Click Sign In */}
+            <div className="vl-a4">
+              <GoogleAuthButton
+                label="Sign in with Google"
+                onSuccessCallback={(res) => {
+                  const user = res?.user || res || {};
+                  const role = user?.role || res?.role || "user";
+                  const isAdmin = role === "admin" || role === "superadmin";
+                  navigate(isAdmin ? "/admin" : "/", { replace: true });
+                }}
+              />
             </div>
           </form>
 

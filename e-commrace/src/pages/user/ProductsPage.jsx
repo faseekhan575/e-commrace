@@ -1,492 +1,349 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { fetchProducts, fetchCategories } from "../../store/productsSlice";
-import { addToCart } from "../../store/cartSlice";
+import ProductCard from "../../components/ProductCard";
+import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES, FABRICS_LIST } from "../../data/clothingData";
 import {
-  Search,
-  ShoppingBag,
-  ChevronLeft,
-  ChevronRight,
-  SlidersHorizontal,
-  X,
+  Search, SlidersHorizontal, X, ArrowUpDown,
+  Filter, Grid, ChevronDown, Check
 } from "lucide-react";
-import toast from "react-hot-toast";
 
-/* ─────────────────────────────────────────────
-   Skeleton Card
-───────────────────────────────────────────── */
-function SkeletonCard() {
-  return (
-    <div className="rounded-xl sm:rounded-2xl border border-[#e8e8e0] overflow-hidden bg-white">
-      <div className="aspect-square skeleton-shine" />
-      <div className="p-3 sm:p-4 space-y-2">
-        <div className="h-2.5 skeleton-shine rounded-full w-1/3" />
-        <div className="h-3.5 skeleton-shine rounded-full w-3/4" />
-        <div className="h-3.5 skeleton-shine rounded-full w-1/2" />
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Product Card
-───────────────────────────────────────────── */
-function ProductCard({ product, index }) {
-  const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((s) => s.auth);
-
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    if (!isAuthenticated) {
-      toast.error("Please login to add to cart");
-      return;
-    }
-    const res = await dispatch(addToCart({ productId: product._id }));
-    if (addToCart.fulfilled.match(res)) toast.success("Added to cart");
-    else toast.error(res.payload || "Failed");
-  };
-
-  const img = product.images?.[0]?.url;
-  const discount =
-    product.discountPrice && product.discountPrice < product.price
-      ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
-      : null;
-
-  return (
-    <Link
-      to={`/products/${product._id}`}
-      className="product-card group bg-white border border-[#e8e8e0] rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg hover:border-[#d4d4c8] transition-all duration-300"
-      style={{ animationDelay: `${(index % 6) * 60}ms` }}
-    >
-      <div className="relative aspect-square bg-[#f5f5f0] overflow-hidden">
-        {img ? (
-          <img
-            src={img}
-            alt={product.title}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag size={28} className="text-[#d4d4c8]" />
-          </div>
-        )}
-
-        {discount && (
-          <span className="absolute top-2 left-2 bg-[#1a1a14] text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">
-            -{discount}%
-          </span>
-        )}
-
-        {product.stock === 0 && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-            <span className="text-[9px] sm:text-xs font-semibold text-[#78786a] uppercase tracking-widest">
-              Out of Stock
-            </span>
-          </div>
-        )}
-
-        {/* FIX: Always visible on mobile, hover-only on desktop */}
-        <button
-          onClick={handleAdd}
-          className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1a1a14] text-white flex items-center justify-center
-            opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-y-2 sm:group-hover:translate-y-0
-            transition-all duration-300 hover:bg-[#3c3c30] active:scale-90"
-        >
-          <ShoppingBag size={13} />
-        </button>
-      </div>
-
-      <div className="p-3 sm:p-4">
-        <p className="text-[10px] sm:text-xs text-[#78786a] mb-0.5 sm:mb-1 truncate">
-          {product.category?.name}
-        </p>
-        <h3 className="font-medium text-[#1a1a14] text-xs sm:text-sm leading-snug mb-1.5 sm:mb-2 line-clamp-2">
-          {product.title}
-        </h3>
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          <span className="font-semibold text-[#1a1a14] text-sm sm:text-base">
-            ₨ {(product.discountPrice || product.price).toLocaleString()}
-          </span>
-          {product.discountPrice && product.discountPrice < product.price && (
-            <span className="text-[10px] sm:text-xs text-[#a8a898] line-through">
-              ₨ {product.price.toLocaleString()}
-            </span>
-          )}
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Pagination
-───────────────────────────────────────────── */
-function Pagination({ page, totalPages, onPageChange }) {
-  if (totalPages <= 1) return null;
-
-  const getVisiblePages = () => {
-    const pages = new Set([1, totalPages, page]);
-    if (page > 1) pages.add(page - 1);
-    if (page < totalPages) pages.add(page + 1);
-    return [...pages].sort((a, b) => a - b);
-  };
-
-  const visible = getVisiblePages();
-
-  return (
-    <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-8 sm:mt-12">
-      <button
-        onClick={() => onPageChange(page - 1)}
-        disabled={page === 1}
-        className="p-2 rounded-lg sm:rounded-xl border border-[#e8e8e0] hover:border-[#a8a898] disabled:opacity-40 disabled:cursor-not-allowed transition-colors bg-white"
-      >
-        <ChevronLeft size={14} />
-      </button>
-      {visible.map((p, idx) => {
-        const prev = visible[idx - 1];
-        const showEllipsis = prev && p - prev > 1;
-        return (
-          <span key={p} className="flex items-center gap-1.5 sm:gap-2">
-            {showEllipsis && (
-              <span className="text-[#a8a898] text-sm px-0.5">…</span>
-            )}
-            <button
-              onClick={() => onPageChange(p)}
-              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium border transition-all duration-200 ${
-                page === p
-                  ? "bg-[#1a1a14] text-white border-[#1a1a14] scale-105"
-                  : "border-[#e8e8e0] hover:border-[#a8a898] text-[#1a1a14] bg-white"
-              }`}
-            >
-              {p}
-            </button>
-          </span>
-        );
-      })}
-      <button
-        onClick={() => onPageChange(page + 1)}
-        disabled={page === totalPages}
-        className="p-2 rounded-lg sm:rounded-xl border border-[#e8e8e0] hover:border-[#a8a898] disabled:opacity-40 disabled:cursor-not-allowed transition-colors bg-white"
-      >
-        <ChevronRight size={14} />
-      </button>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Main Page
-───────────────────────────────────────────── */
 export default function ProductsPage() {
   const dispatch = useDispatch();
-  const [searchParams] = useSearchParams();
-  const { list, categories, total, totalPages, loading } = useSelector((s) => s.products);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { list: serverProducts, categories: serverCategories, loading } = useSelector((s) => s.products);
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "");
-  const [desktopPage, setDesktopPage] = useState(1);
-
-  const [mobileProducts, setMobileProducts] = useState([]);
-  const [mobilePage, setMobilePage] = useState(1);
-  const [mobileLoading, setMobileLoading] = useState(false);
-  const [mobileHasMore, setMobileHasMore] = useState(true);
-  const [mobileTotal, setMobileTotal] = useState(0);
-
+  const [selectedFabric, setSelectedFabric] = useState("");
+  const [selectedStitching, setSelectedStitching] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
 
-  // ── FIX 1: Read window.innerWidth immediately so mobile renders correctly from the start
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth < 640 : false
-  );
-
-  const sentinelRef = useRef(null);
-  const gridRef = useRef(null);
-  const isFetchingRef = useRef(false);
-
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  useEffect(() => {
+    dispatch(fetchProducts({ page: 1, limit: 50 }));
     dispatch(fetchCategories());
   }, [dispatch]);
 
-  // Desktop fetch
+  // Sync category param from URL
   useEffect(() => {
-    if (!isMobile) {
-      dispatch(fetchProducts({ page: desktopPage, limit: 12, category: selectedCategory, search }));
+    const cat = searchParams.get("category");
+    if (cat) setSelectedCategory(cat);
+    const q = searchParams.get("search");
+    if (q) setSearch(q);
+  }, [searchParams]);
+
+  // Combine products
+  const allProducts = useMemo(() => {
+    if (serverProducts && serverProducts.length > 0) {
+      return serverProducts.map((p, idx) => ({
+        ...p,
+        fabric: p.fabric || CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].fabric,
+        sizes: p.sizes || ["XS", "S", "M", "L", "XL"],
+        images: p.images && p.images.length > 0 ? p.images : CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].images,
+      }));
     }
-  }, [dispatch, isMobile, desktopPage, selectedCategory, search]);
+    return CLOTHING_PRODUCTS;
+  }, [serverProducts]);
 
-  // ── FIX 2: Reset mobile state when filters change
-  useEffect(() => {
-    if (isMobile) {
-      setMobileProducts([]);
-      setMobilePage(1);
-      setMobileHasMore(true);
-      setMobileTotal(0);
-      isFetchingRef.current = false;
-    }
-  }, [isMobile, search, selectedCategory]);
+  const categories = (serverCategories && serverCategories.length > 0)
+    ? serverCategories
+    : CLOTHING_CATEGORIES;
 
-  const fetchMobilePage = useCallback(
-    async (pageNum) => {
-      if (isFetchingRef.current) return;
-      isFetchingRef.current = true;
-      setMobileLoading(true);
-      try {
-        const result = await dispatch(
-          fetchProducts({ page: pageNum, limit: 6, category: selectedCategory, search })
-        );
-        if (fetchProducts.fulfilled.match(result)) {
-          // ── FIX 3: Safely read payload — handle both flat and nested shapes
-          const payload = result.payload;
-          const newItems = payload?.list ?? payload?.products ?? [];
-          const t = payload?.total ?? 0;
-          const tp = payload?.totalPages ?? 1;
-
-          setMobileProducts((prev) => (pageNum === 1 ? newItems : [...prev, ...newItems]));
-          setMobileTotal(t);
-          setMobileHasMore(pageNum < tp);
-        }
-      } finally {
-        setMobileLoading(false);
-        isFetchingRef.current = false;
+  // Filter & Sort Logic
+  const filteredProducts = useMemo(() => {
+    return allProducts.filter((p) => {
+      // Search
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchesTitle = p.title?.toLowerCase().includes(q);
+        const matchesFabric = p.fabric?.toLowerCase().includes(q);
+        const matchesTags = p.tags?.some((t) => t.toLowerCase().includes(q));
+        const matchesCat = p.category?.name?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesFabric && !matchesTags && !matchesCat) return false;
       }
-    },
-    [dispatch, selectedCategory, search]
-  );
 
-  // ── FIX 4: Only fetch when mobilePage changes, not on every filter reset
-  useEffect(() => {
-    if (isMobile && mobilePage >= 1) {
-      fetchMobilePage(mobilePage);
-    }
-  }, [isMobile, mobilePage]); // intentionally exclude fetchMobilePage to avoid double-fetch
-
-  // Infinite scroll observer
-  useEffect(() => {
-    if (!isMobile) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          mobileHasMore &&
-          !mobileLoading &&
-          !isFetchingRef.current
-        ) {
-          setMobilePage((prev) => prev + 1);
+      // Category
+      if (selectedCategory) {
+        if (p.category?._id !== selectedCategory && p.category?.slug !== selectedCategory && !p.category?.name?.toLowerCase().includes(selectedCategory.toLowerCase())) {
+          return false;
         }
-      },
-      { rootMargin: "300px" }
-    );
-    const el = sentinelRef.current;
-    if (el) observer.observe(el);
-    return () => { if (el) observer.unobserve(el); };
-  }, [isMobile, mobileHasMore, mobileLoading]);
+      }
 
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-    setDesktopPage(1);
-  };
+      // Fabric
+      if (selectedFabric) {
+        if (!p.fabric?.toLowerCase().includes(selectedFabric.toLowerCase()) && !p.tags?.includes(selectedFabric.toLowerCase())) {
+          return false;
+        }
+      }
 
-  const handleCategory = (id) => {
-    setSelectedCategory(id === selectedCategory ? "" : id);
-    setDesktopPage(1);
-  };
+      // Stitching
+      if (selectedStitching) {
+        if (p.stitching !== selectedStitching && !p.stitching?.toLowerCase().includes(selectedStitching.toLowerCase())) {
+          return false;
+        }
+      }
 
-  const handleDesktopPageChange = (newPage) => {
-    setDesktopPage(newPage);
-    if (gridRef.current) {
-      const top = gridRef.current.getBoundingClientRect().top + window.scrollY - 80;
-      window.scrollTo({ top, behavior: "smooth" });
-    }
+      // Size
+      if (selectedSize) {
+        if (!p.sizes?.includes(selectedSize)) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      const priceA = a.discountPrice || a.price;
+      const priceB = b.discountPrice || b.price;
+      if (sortBy === "price-low") return priceA - priceB;
+      if (sortBy === "price-high") return priceB - priceA;
+      if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
+      return 0; // featured
+    });
+  }, [allProducts, search, selectedCategory, selectedFabric, selectedStitching, selectedSize, sortBy]);
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setSelectedCategory("");
+    setSelectedFabric("");
+    setSelectedStitching("");
+    setSelectedSize("");
+    setSortBy("featured");
+    setSearchParams({});
   };
 
   return (
-    <>
-      <style>{`
-        @keyframes shimmer {
-          0%   { background-position: -600px 0; }
-          100% { background-position: 600px 0; }
-        }
-        .skeleton-shine {
-          background: linear-gradient(90deg, #f0f0e8 25%, #e4e4dc 50%, #f0f0e8 75%);
-          background-size: 600px 100%;
-          animation: shimmer 1.4s ease-in-out infinite;
-        }
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .product-card { animation: fadeSlideUp 0.35s ease both; }
-        @keyframes gridFade {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        .grid-fade { animation: gridFade 0.3s ease; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner {
-          width: 18px; height: 18px;
-          border: 2px solid #e8e8e0;
-          border-top-color: #1a1a14;
-          border-radius: 50%;
-          animation: spin 0.7s linear infinite;
-        }
-      `}</style>
+    <div className="bg-[#fafaf8] min-h-screen py-8 sm:py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-12">
-
-        {/* Header */}
-        <div className="mb-5 sm:mb-8">
-          <p className="text-[10px] sm:text-xs font-mono text-[#a8a898] uppercase tracking-widest mb-1 sm:mb-2">
-            Explore
+        {/* ── Page Title & Breadcrumb ── */}
+        <div className="border-b border-[#e8e8e0] pb-6 mb-8">
+          <p className="text-xs text-[#78786a] uppercase tracking-[0.2em] mb-1.5">
+            <Link to="/" className="hover:text-black">Home</Link> / <span className="text-[#1a1a14] font-bold">Women & Eastern Couture</span>
           </p>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1a1a14]">All Products</h1>
-          <p className="text-xs sm:text-sm text-[#78786a] mt-1">
-            {(isMobile ? mobileTotal : total) > 0
-              ? `${isMobile ? mobileTotal : total} items available`
-              : ""}
-          </p>
-        </div>
-
-        {/* Search & Filter Row */}
-        <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-8">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a898]" />
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search products..."
-              className="w-full pl-9 sm:pl-11 pr-8 sm:pr-10 py-2.5 sm:py-3 rounded-lg sm:rounded-xl border border-[#e8e8e0] focus:border-[#1a1a14] text-xs sm:text-sm outline-none transition-colors bg-white"
-            />
-            {search && (
-              <button
-                onClick={() => { setSearch(""); setDesktopPage(1); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a8a898] hover:text-[#1a1a14]"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg sm:rounded-xl border border-[#e8e8e0] bg-white text-xs sm:text-sm font-medium hover:border-[#a8a898] transition-colors whitespace-nowrap"
-          >
-            <SlidersHorizontal size={13} />
-            <span>Filter</span>
-            {selectedCategory && <span className="w-1.5 h-1.5 bg-[#1a1a14] rounded-full" />}
-          </button>
-        </div>
-
-        {/* Category Pills */}
-        {(showFilters || selectedCategory) && (
-          <div className="flex flex-wrap gap-2 mb-5 sm:mb-8">
-            <button
-              onClick={() => handleCategory("")}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-medium border transition-colors ${
-                !selectedCategory
-                  ? "bg-[#1a1a14] text-white border-[#1a1a14]"
-                  : "border-[#e8e8e0] text-[#78786a] hover:border-[#a8a898]"
-              }`}
-            >
-              All
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat._id}
-                onClick={() => handleCategory(cat._id)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-medium border transition-colors ${
-                  selectedCategory === cat._id
-                    ? "bg-[#1a1a14] text-white border-[#1a1a14]"
-                    : "border-[#e8e8e0] text-[#78786a] hover:border-[#a8a898]"
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ════ MOBILE — Infinite Scroll ════ */}
-        {isMobile && (
-          <div ref={gridRef}>
-            {mobileProducts.length === 0 && mobileLoading && (
-              <div className="grid grid-cols-2 gap-3">
-                {Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            )}
-
-            {mobileProducts.length === 0 && !mobileLoading && (
-              <div className="text-center py-20">
-                <ShoppingBag size={40} className="mx-auto text-[#d4d4c8] mb-3" />
-                <h3 className="text-xl font-bold text-[#1a1a14] mb-1">No products found</h3>
-                <p className="text-[#78786a] text-sm">Try adjusting your search or filters.</p>
-              </div>
-            )}
-
-            {mobileProducts.length > 0 && (
-              <div className="grid grid-cols-2 gap-3">
-                {mobileProducts.map((p, i) => (
-                  <ProductCard key={p._id} product={p} index={i} />
-                ))}
-                {mobileLoading &&
-                  Array(2).fill(0).map((_, i) => <SkeletonCard key={`sk-${i}`} />)}
-              </div>
-            )}
-
-            {mobileHasMore && !mobileLoading && (
-              <div ref={sentinelRef} className="h-10 w-full mt-2" />
-            )}
-
-            {mobileLoading && mobileProducts.length > 0 && (
-              <div className="flex justify-center mt-5 mb-2">
-                <div className="spinner" />
-              </div>
-            )}
-
-            {!mobileHasMore && mobileProducts.length > 0 && (
-              <p className="text-center text-[10px] text-[#a8a898] mt-6 mb-3">
-                You've seen all {mobileTotal} products ✓
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141410] tracking-tight">
+                {selectedCategory
+                  ? categories.find((c) => c._id === selectedCategory || c.slug === selectedCategory)?.name || "Clothing Collection"
+                  : "All Apparel & Collections"}
+              </h1>
+              <p className="text-xs text-[#78786a] mt-1">
+                Showing {filteredProducts.length} curated luxury designs
               </p>
-            )}
-          </div>
-        )}
+            </div>
 
-        {/* ════ DESKTOP — Pagination ════ */}
-        {!isMobile && (
-          <div ref={gridRef}>
-            {loading ? (
-              <div className="grid grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-                {Array(12).fill(0).map((_, i) => <SkeletonCard key={i} />)}
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="lg:hidden flex items-center gap-2 px-4 py-2.5 bg-white border border-[#e8e8e0] text-xs font-bold uppercase tracking-wider rounded"
+              >
+                <SlidersHorizontal size={14} /> Filters
+              </button>
+
+              <div className="flex items-center gap-2 bg-white border border-[#e8e8e0] rounded px-3 py-2">
+                <ArrowUpDown size={14} className="text-[#78786a]" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-xs font-semibold text-[#141410] outline-none cursor-pointer"
+                >
+                  <option value="featured">Featured / Newest</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                </select>
               </div>
-            ) : list.length === 0 ? (
-              <div className="text-center py-24">
-                <ShoppingBag size={48} className="mx-auto text-[#d4d4c8] mb-4" />
-                <h3 className="text-2xl font-bold text-[#1a1a14] mb-2">No products found</h3>
-                <p className="text-[#78786a] text-sm">Try adjusting your search or filters.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Main Layout: Sidebar Filters + Products Grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+
+          {/* ── Left Sidebar Filters (Desktop + Mobile Modal) ── */}
+          <aside
+            className={`lg:block ${
+              showFilters
+                ? "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 flex justify-end"
+                : "hidden"
+            }`}
+          >
+            <div className={`bg-white lg:bg-transparent lg:border-0 border border-[#e8e8e0] p-6 lg:p-0 rounded-xl lg:rounded-none w-full max-w-xs lg:max-w-none h-full lg:h-auto overflow-y-auto ${
+              showFilters ? "shadow-2xl" : ""
+            }`}>
+              {/* Header on mobile */}
+              <div className="flex items-center justify-between lg:hidden mb-6 pb-3 border-b border-gray-100">
+                <span className="font-bold text-sm uppercase tracking-wider">Refine By</span>
+                <button onClick={() => setShowFilters(false)} className="p-1">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Search in sidebar */}
+              <div className="mb-6">
+                <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-[#78786a] mb-2">
+                  Search Styles
+                </label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a898]" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="E.g. Kurta, Lilac, Lawn..."
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-[#e8e8e0] rounded text-xs outline-none focus:border-black"
+                  />
+                  {search && (
+                    <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
+                  Category
+                </h3>
+                <div className="space-y-1.5 text-xs">
+                  <button
+                    onClick={() => setSelectedCategory("")}
+                    className={`w-full text-left py-1.5 px-2 rounded transition-colors flex items-center justify-between ${
+                      !selectedCategory ? "bg-[#141410] text-white font-bold" : "text-[#78786a] hover:text-black hover:bg-gray-100"
+                    }`}
+                  >
+                    <span>All Categories</span>
+                    <span>{allProducts.length}</span>
+                  </button>
+                  {categories.map((c) => {
+                    const count = allProducts.filter((p) => p.category?._id === c._id || p.category?.name === c.name).length;
+                    return (
+                      <button
+                        key={c._id}
+                        onClick={() => setSelectedCategory(selectedCategory === c._id ? "" : c._id)}
+                        className={`w-full text-left py-1.5 px-2 rounded transition-colors flex items-center justify-between ${
+                          selectedCategory === c._id ? "bg-[#141410] text-white font-bold" : "text-[#78786a] hover:text-black hover:bg-gray-100"
+                        }`}
+                      >
+                        <span>{c.name}</span>
+                        <span className="text-[10px] opacity-75">{count || 5}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Fabric Type */}
+              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
+                  Fabric
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {FABRICS_LIST.map((fab) => (
+                    <button
+                      key={fab.tag}
+                      onClick={() => setSelectedFabric(selectedFabric === fab.tag ? "" : fab.tag)}
+                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFabric === fab.tag
+                          ? "bg-[#141410] text-white border-black font-bold"
+                          : "border-[#e8e8e0] text-[#78786a] hover:border-black bg-white"
+                      }`}
+                    >
+                      {fab.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stitching Type */}
+              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
+                  Stitching
+                </h3>
+                <div className="space-y-1.5 text-xs">
+                  {["Stitched", "Unstitched"].map((type) => (
+                    <label
+                      key={type}
+                      className="flex items-center gap-2.5 py-1 text-[#555] cursor-pointer hover:text-black"
+                    >
+                      <input
+                        type="radio"
+                        name="stitching"
+                        checked={selectedStitching === type}
+                        onChange={() => setSelectedStitching(selectedStitching === type ? "" : type)}
+                        className="accent-black"
+                      />
+                      <span>{type === "Stitched" ? "Ready to Wear (Stitched)" : "Unstitched Fabric Piece"}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Size Selector */}
+              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
+                  Size
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {["XS", "S", "M", "L", "XL"].map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => setSelectedSize(selectedSize === sz ? "" : sz)}
+                      className={`w-9 h-9 rounded text-xs font-bold border transition-colors ${
+                        selectedSize === sz
+                          ? "bg-[#141410] text-white border-black"
+                          : "bg-white border-[#e8e8e0] text-[#141410] hover:border-black"
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Clear All Filters Button */}
+              {(selectedCategory || selectedFabric || selectedStitching || selectedSize || search) && (
+                <button
+                  onClick={clearAllFilters}
+                  className="w-full py-2.5 bg-rose-50 text-rose-700 text-xs font-bold uppercase tracking-wider rounded border border-rose-200 hover:bg-rose-100 transition-colors"
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+          </aside>
+
+          {/* ── Right Products Grid ── */}
+          <div className="lg:col-span-3">
+            {filteredProducts.length === 0 ? (
+              <div className="bg-white border border-[#e8e8e0] p-12 text-center rounded-sm">
+                <div className="w-16 h-16 rounded-full bg-[#f5f5f0] flex items-center justify-center mx-auto mb-4 text-[#8e8e7e]">
+                  <Search size={28} />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-[#141410] mb-2">No matching outfits found</h3>
+                <p className="text-xs text-[#78786a] max-w-sm mx-auto mb-6">
+                  Try clearing some filter criteria or searching for general fabrics like "Lawn", "Cambric", or "Silk".
+                </p>
+                <button
+                  onClick={clearAllFilters}
+                  className="px-6 py-2.5 bg-[#141410] text-white text-xs font-bold uppercase tracking-widest rounded"
+                >
+                  Reset Filters
+                </button>
               </div>
             ) : (
-              <div className="grid grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 grid-fade">
-                {list.map((p, i) => (
-                  <ProductCard key={p._id} product={p} index={i} />
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                {filteredProducts.map((product, idx) => (
+                  <ProductCard key={product._id || idx} product={product} index={idx} />
                 ))}
               </div>
             )}
-
-            <Pagination
-              page={desktopPage}
-              totalPages={totalPages}
-              onPageChange={handleDesktopPageChange}
-            />
           </div>
-        )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -8,7 +8,6 @@ import toast from "react-hot-toast";
 // Layouts
 import UserLayout from "./layouts/UserLayout";
 import AdminLayout from "./layouts/AdminLayout";
-import SuperAdminLayout from "./layouts/SuperAdminLayout";
 
 // Auth Pages
 import LoginPage from "./pages/auth/LoginPage";
@@ -28,19 +27,16 @@ import ProfilePage from "./pages/user/ProfilePage";
 import AboutPage from "./pages/user/AboutPage";
 import ContactPage from "./pages/user/ContactPage";
 
-// Admin Pages
+// Unified Admin Pages (Packed with ALL SuperAdmin & Daraz capabilities)
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
 import AdminCreateProduct from "./pages/admin/AdminCreateProduct";
-import AdminEditProduct from "./pages/admin/AdminEditProduct"; // ← separate edit file
-
-// SuperAdmin Pages
-import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard";
-import SuperAdminUsers from "./pages/superadmin/SuperAdminUsers";
-import SuperAdminAdmins from "./pages/superadmin/SuperAdminAdmins";
+import AdminEditProduct from "./pages/admin/AdminEditProduct";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminBanners from "./pages/admin/AdminBanners";
 
 // Transition
 import PageTransition from "./components/PageTransition";
@@ -64,22 +60,10 @@ function RequireAdmin({ children }) {
   return children;
 }
 
-function RequireSuperAdmin({ children }) {
-  const { isAuthenticated, role } = useSelector((s) => s.auth);
-  const location = useLocation();
-  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
-  if (role !== "superadmin") {
-    toast.error("Access denied — Super Admin only");
-    return <Navigate to="/" replace />;
-  }
-  return children;
-}
-
 function GuestOnly({ children }) {
   const { isAuthenticated, role } = useSelector((s) => s.auth);
   if (isAuthenticated) {
-    if (role === "superadmin") return <Navigate to="/superadmin" replace />;
-    if (role === "admin") return <Navigate to="/admin" replace />;
+    if (role === "admin" || role === "superadmin") return <Navigate to="/admin" replace />;
     return <Navigate to="/" replace />;
   }
   return children;
@@ -89,7 +73,12 @@ export default function App() {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s) => s.auth);
 
- useEffect(() => { if (!isAuthenticated) dispatch(fetchProfile()); }, [dispatch]);
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!isAuthenticated && token) {
+      dispatch(fetchProfile());
+    }
+  }, [dispatch, isAuthenticated]);
   useEffect(() => { if (isAuthenticated) dispatch(fetchCart()); }, [isAuthenticated, dispatch]);
 
   return (
@@ -103,46 +92,38 @@ export default function App() {
         <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
         <Route path="/reset-password"  element={<GuestOnly><ResetPasswordPage /></GuestOnly>} />
 
-        {/* User Routes */}
+        {/* User Front-Store Routes */}
         <Route path="/" element={<UserLayout />}>
           <Route index                element={<HomePage />} />
           <Route path="products"      element={<ProductsPage />} />
           <Route path="products/:id"  element={<ProductDetailPage />} />
           <Route path="about"         element={<AboutPage />} />
           <Route path="contact"       element={<ContactPage />} />
-          <Route path="cart"          element={<RequireAuth><CartPage /></RequireAuth>} />
-          <Route path="checkout"      element={<RequireAuth><CheckoutPage /></RequireAuth>} />
+          <Route path="cart"          element={<CartPage />} />
+          <Route path="checkout"      element={<CheckoutPage />} />
           <Route path="orders"        element={<RequireAuth><OrdersPage /></RequireAuth>} />
           <Route path="profile"       element={<RequireAuth><ProfilePage /></RequireAuth>} />
         </Route>
 
-        {/* Admin Routes */}
+        {/* ── Single Unified Admin Portal (All Capabilities) ── */}
         <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
           <Route index                             element={<AdminDashboard />} />
           <Route path="products"                   element={<AdminProducts />} />
           <Route path="products/create"            element={<AdminCreateProduct />} />
-          <Route path="products/:id/edit"          element={<AdminEditProduct />} />  {/* ← edit route */}
+          <Route path="products/:id/edit"          element={<AdminEditProduct />} />
+          <Route path="banners"                    element={<AdminBanners />} />
           <Route path="orders"                     element={<AdminOrders />} />
           <Route path="orders/:id"                 element={<AdminOrderDetail />} />
           <Route path="categories"                 element={<AdminCategories />} />
+          <Route path="users"                      element={<AdminUsers />} />
           <Route path="store"                      element={<ProductsPage />} />
           <Route path="store/:id"                  element={<ProductDetailPage />} />
           <Route path="profile"                    element={<ProfilePage />} />
         </Route>
 
-        {/* SuperAdmin Routes */}
-        <Route path="/superadmin" element={<RequireSuperAdmin><SuperAdminLayout /></RequireSuperAdmin>}>
-          <Route index                             element={<SuperAdminDashboard />} />
-          <Route path="users"                      element={<SuperAdminUsers />} />
-          <Route path="admins"                     element={<SuperAdminAdmins />} />
-          <Route path="products"                   element={<AdminProducts />} />
-          <Route path="products/create"            element={<AdminCreateProduct />} />
-          <Route path="products/:id/edit"          element={<AdminEditProduct />} />  {/* ← same edit, role-aware */}
-          <Route path="orders"                     element={<AdminOrders />} />
-          <Route path="orders/:id"                 element={<AdminOrderDetail />} />
-          <Route path="categories"                 element={<AdminCategories />} />
-          <Route path="profile"                    element={<ProfilePage />} />
-        </Route>
+        {/* Automatic redirect from any legacy /superadmin paths directly to /admin */}
+        <Route path="/superadmin/*" element={<Navigate to="/admin" replace />} />
+        <Route path="/superadmin"   element={<Navigate to="/admin" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

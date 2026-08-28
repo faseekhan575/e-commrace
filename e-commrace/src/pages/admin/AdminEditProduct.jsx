@@ -380,8 +380,7 @@ export default function AdminEditProduct() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { categories, current: product } = useSelector((st) => st.products);
-  const { role } = useSelector((st) => st.auth);
-  const basePath = role === "superadmin" ? "/superadmin" : "/admin";
+  const basePath = "/admin";
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -393,7 +392,7 @@ export default function AdminEditProduct() {
   const fileRef = useRef();
 
   const [form, setForm] = useState({
-    title: "", description: "", price: "",
+    title: "", fabric: "Printed | Cambric", stitching: "Stitched", description: "", price: "",
     discountPrice: "", stock: "", category: "", tags: [],
   });
 
@@ -406,6 +405,8 @@ export default function AdminEditProduct() {
     if (product && product._id === id) {
       setForm({
         title: product.title || "",
+        fabric: product.fabric || "Printed | Cambric",
+        stitching: product.stitching || "Stitched",
         description: product.description || "",
         price: product.price?.toString() || "",
         discountPrice: product.discountPrice?.toString() || "",
@@ -455,6 +456,8 @@ export default function AdminEditProduct() {
     try {
       const fd = new FormData();
       fd.append("title", form.title);
+      fd.append("fabric", form.fabric);
+      fd.append("stitching", form.stitching);
       fd.append("description", form.description);
       fd.append("price", form.price);
       if (form.discountPrice) fd.append("discountPrice", form.discountPrice);
@@ -592,6 +595,38 @@ export default function AdminEditProduct() {
                 onBlur={(e) => e.target.style.borderColor = errors.title ? "#ef4444" : form.title ? "#333" : "#1a1a1a"}
               />
               <ErrMsg msg={errors.title} />
+            </div>
+
+            {/* Fabric & Stitching */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+              <div>
+                <label style={s.label}>Fabric Tagline (e.g. Printed | Cambric)</label>
+                <select
+                  value={form.fabric}
+                  onChange={(e) => set("fabric", e.target.value)}
+                  style={{ ...s.inp, cursor: "pointer" }}
+                >
+                  <option value="Printed | Cambric">Printed | Cambric</option>
+                  <option value="Embroidered | Luxury Lawn">Embroidered | Luxury Lawn</option>
+                  <option value="Jacquard | 2 Piece">Jacquard | 2 Piece</option>
+                  <option value="Luxury Pret | Raw Silk">Luxury Pret | Raw Silk</option>
+                  <option value="Chiffon | Festive Edit">Chiffon | Festive Edit</option>
+                  <option value="Pure Cotton | Men's Pret">Pure Cotton | Men's Pret</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={s.label}>Stitching Type</label>
+                <select
+                  value={form.stitching}
+                  onChange={(e) => set("stitching", e.target.value)}
+                  style={{ ...s.inp, cursor: "pointer" }}
+                >
+                  <option value="Stitched">Ready to Wear (Stitched)</option>
+                  <option value="Unstitched">Unstitched Fabric Piece</option>
+                  <option value="Semi-Stitched">Semi-Stitched</option>
+                </select>
+              </div>
             </div>
 
             {/* Description */}

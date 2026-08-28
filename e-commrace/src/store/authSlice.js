@@ -10,6 +10,15 @@ export const loginUser = createAsyncThunk("auth/login", async (credentials, { re
   }
 });
 
+export const loginWithGoogle = createAsyncThunk("auth/loginWithGoogle", async (googleData, { rejectWithValue }) => {
+  try {
+    const res = await axios.post("/api/v1/auth/google", googleData);
+    return res.data.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || "Google sign-in failed");
+  }
+});
+
 export const registerUser = createAsyncThunk("auth/register", async (data, { rejectWithValue }) => {
   try {
     const res = await axios.post("/api/v1/auth/register", data);
@@ -45,12 +54,24 @@ export const fetchProfile = createAsyncThunk("auth/profile", async (_, { rejectW
   }
 });
 
+// Extract user object and role reliably from backend responses
+const parseAuthData = (payload) => {
+  if (!payload) return { user: null, role: null, token: null };
+  const user = payload.user || payload;
+  const role = user?.role || payload?.role || "user";
+  const token = payload?.accessToken || payload?.token || user?.accessToken;
+  return { user, role, token };
+};
+
+const initialToken = localStorage.getItem("accessToken");
+const initialRole = localStorage.getItem("userRole");
+
 const authSlice = createSlice({
   name: "auth",
   initialState: {
     user: null,
-    role: null,
-    isAuthenticated: false,
+    role: initialRole || null,
+    isAuthenticated: !!initialToken,
     loading: false,
     error: null,
     otpPending: false,
@@ -73,12 +94,29 @@ const authSlice = createSlice({
       .addCase(loginUser.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload;
-        state.role = action.payload.role;
+        const { user, role, token } = parseAuthData(action.payload);
+        state.user = user;
+        state.role = role;
         state.isAuthenticated = true;
-        localStorage.setItem("accessToken", action.payload.accessToken);
+        if (token) localStorage.setItem("accessToken", token);
+        if (role) localStorage.setItem("userRole", role);
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // GOOGLE LOGIN
+      .addCase(loginWithGoogle.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.loading = false;
+        const { user, role, token } = parseAuthData(action.payload);
+        state.user = user;
+        state.role = role;
+        state.isAuthenticated = true;
+        if (token) localStorage.setItem("accessToken", token);
+        if (role) localStorage.setItem("userRole", role);
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -93,12 +131,14 @@ const authSlice = createSlice({
       .addCase(verifyOtp.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(verifyOtp.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload;
-        state.role = action.payload.role;
+        const { user, role, token } = parseAuthData(action.payload);
+        state.user = user;
+        state.role = role;
         state.isAuthenticated = true;
         state.otpPending = false;
         state.otpEmail = null;
-        localStorage.setItem("accessToken", action.payload.accessToken);
+        if (token) localStorage.setItem("accessToken", token);
+        if (role) localStorage.setItem("userRole", role);
       })
       .addCase(verifyOtp.rejected, (state, action) => {
         state.loading = false;
@@ -110,18 +150,22 @@ const authSlice = createSlice({
         state.role = null;
         state.isAuthenticated = false;
         localStorage.removeItem("accessToken");
+        localStorage.removeItem("userRole");
       })
       // PROFILE
       .addCase(fetchProfile.fulfilled, (state, action) => {
-        state.user = { ...state.user, ...action.payload };
-        state.role = action.payload.role;
+        const { user, role } = parseAuthData(action.payload);
+        state.user = { ...state.user, ...user };
+        state.role = role;
         state.isAuthenticated = true;
+        if (role) localStorage.setItem("userRole", role);
       })
       .addCase(fetchProfile.rejected, (state) => {
         state.user = null;
         state.role = null;
         state.isAuthenticated = false;
         localStorage.removeItem("accessToken");
+        localStorage.removeItem("userRole");
       });
   },
 });

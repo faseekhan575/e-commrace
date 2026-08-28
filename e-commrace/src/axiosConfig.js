@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+
 const instance = axios.create({
-  baseURL: "https://e-commarce-v3jf.onrender.com",
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 

@@ -1,427 +1,373 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProducts, fetchCategories } from "../../store/productsSlice";
-import { addToCart } from "../../store/cartSlice";
-import { ArrowRight, ShoppingBag, Sparkles, Star, Zap } from "lucide-react";
-import toast from "react-hot-toast";
+import { fetchProducts, fetchCategories, fetchHotProducts } from "../../store/productsSlice";
+import { fetchActiveBanners } from "../../store/bannerSlice";
+import ProductCard from "../../components/ProductCard";
+import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES, FABRICS_LIST } from "../../data/clothingData";
+import { optimizeImage } from "../../utils/imageOptimizer";
+import {
+  ArrowRight, Sparkles, ChevronLeft, ChevronRight,
+  Truck, ShieldCheck, RotateCcw, Heart, ShoppingBag,
+  ExternalLink, Eye, Play, Star, Flame
+} from "lucide-react";
 
-/* ─── Google Fonts injected once ─── */
-function InjectFonts() {
-  useEffect(() => {
-    if (document.getElementById("vault-fonts")) return;
-    const link = document.createElement("link");
-    link.id = "vault-fonts";
-    link.rel = "stylesheet";
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap";
-    document.head.appendChild(link);
-
-    const style = document.createElement("style");
-    style.textContent = `
-      .vault-display { font-family: 'Cormorant Garamond', Georgia, serif; }
-      .vault-body    { font-family: 'DM Sans', system-ui, sans-serif; }
-
-      @keyframes vault-fade-up {
-        from { opacity: 0; transform: translateY(28px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes vault-fade-in {
-        from { opacity: 0; }
-        to   { opacity: 1; }
-      }
-      @keyframes ticker {
-        0%   { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
-      }
-      @keyframes shimmer {
-        0%   { background-position: -200% center; }
-        100% { background-position: 200% center; }
-      }
-
-      .vault-a1 { animation: vault-fade-up .7s cubic-bezier(.22,1,.36,1) both; }
-      .vault-a2 { animation: vault-fade-up .7s .15s cubic-bezier(.22,1,.36,1) both; }
-      .vault-a3 { animation: vault-fade-up .7s .3s  cubic-bezier(.22,1,.36,1) both; }
-      .vault-a4 { animation: vault-fade-up .7s .45s cubic-bezier(.22,1,.36,1) both; }
-      .vault-a5 { animation: vault-fade-up .7s .6s  cubic-bezier(.22,1,.36,1) both; }
-
-      .ticker-wrap { overflow: hidden; white-space: nowrap; }
-      .ticker-inner { display: inline-flex; animation: ticker 28s linear infinite; }
-
-      .card-img { transition: transform .65s cubic-bezier(.22,1,.36,1); }
-      .card-root:hover .card-img { transform: scale(1.08); }
-
-      .btn-primary {
-        position: relative; overflow: hidden;
-        background: #1a1a14; color: #fff;
-        transition: transform .2s, box-shadow .2s;
-      }
-      .btn-primary::after {
-        content:''; position:absolute; inset:0;
-        background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.13) 50%, transparent 70%);
-        background-size: 200% 100%;
-        opacity: 0;
-        transition: opacity .3s;
-      }
-      .btn-primary:hover::after { opacity:1; animation: shimmer .6s linear; }
-      .btn-primary:hover { transform:translateY(-2px); box-shadow:0 12px 32px rgba(26,26,20,.25); }
-      .btn-primary:active { transform:translateY(0); }
-
-      .stat-num {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: clamp(2.2rem, 5vw, 3.5rem);
-        font-weight: 700; line-height: 1;
-        color: #1a1a14;
-      }
-
-      .section-label {
-        font-family: 'DM Sans', sans-serif;
-        font-size: .65rem; letter-spacing: .25em;
-        text-transform: uppercase; color: #a8a898;
-      }
-
-      /* ── FIX: Show add button always on touch devices (no hover on mobile) ── */
-      .product-add-btn {
-        opacity: 0; transform: translateY(6px);
-        transition: opacity .25s, transform .25s;
-      }
-      .card-root:hover .product-add-btn {
-        opacity: 1; transform: translateY(0);
-      }
-      @media (hover: none) {
-        .product-add-btn {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .cat-label {
-        transform: translateY(4px);
-        transition: transform .35s cubic-bezier(.22,1,.36,1);
-      }
-      .card-root:hover .cat-label { transform: translateY(0); }
-      @media (hover: none) {
-        .cat-label { transform: translateY(0); }
-      }
-
-      .badge-pill {
-        background: rgba(255,255,255,.92);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-      }
-
-      .skeleton { animation: pulse 1.6s ease-in-out infinite; background: #f0f0e8; }
-      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-
-      .divider-line {
-        width:32px; height:1px; background:#1a1a14; display:inline-block; vertical-align:middle;
-      }
-    `;
-    document.head.appendChild(style);
-  }, []);
-  return null;
-}
-
-/* ─── Marquee ticker ─── */
-function Ticker() {
-  const items = ["FREE SHIPPING ON ORDERS OVER ₨5,000", "NEW CURATED DROPS EVERY WEEK",
-    "99% CUSTOMER SATISFACTION", "PREMIUM PRODUCTS · HONEST PRICES", "VAULT — ONLY THE FINEST"];
-  const doubled = [...items, ...items];
-  return (
-    <div className="vault-body ticker-wrap bg-[#1a1a14] text-white py-3">
-      <div className="ticker-inner">
-        {doubled.map((t, i) => (
-          <span key={i} className="inline-flex items-center gap-5 px-8 text-[11px] tracking-[.18em]">
-            {t} <span className="w-1 h-1 rounded-full bg-[#e8b520] inline-block flex-shrink-0" />
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Product Card ─── */
-function ProductCard({ product, index = 0 }) {
-  const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((s) => s.auth);
-
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    if (!isAuthenticated) { toast.error("Please login to add to cart"); return; }
-    const res = await dispatch(addToCart({ productId: product._id }));
-    if (addToCart.fulfilled.match(res)) toast.success("Added to cart");
-    else toast.error(res.payload || "Failed to add");
-  };
-
-  const img = product.images?.[0]?.url;
-  const discount = product.discountPrice && product.discountPrice < product.price
-    ? Math.round(((product.price - product.discountPrice) / product.price) * 100) : null;
-
-  return (
-    <Link
-      to={`/products/${product._id}`}
-      // FIX: replaced Cyrillic "е" in #ebebе3 → correct Latin #ebebe3
-      className="card-root vault-body group block bg-white border border-[#ebebe3] rounded-2xl overflow-hidden hover:shadow-[0_20px_60px_rgba(26,26,20,.10)] transition-shadow duration-500"
-      style={{ animationDelay: `${index * 0.07}s` }}
-    >
-      {/* Image */}
-      <div className="relative aspect-[3/2.6] bg-[#f8f8f5] overflow-hidden">
-        {img ? (
-          <img src={img} alt={product.title}
-            className="card-img w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-[#f5f5f0]">
-            <ShoppingBag size={36} className="text-[#d4d4c8]" />
-          </div>
-        )}
-
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex gap-1.5">
-          {discount && (
-            <span className="badge-pill text-[#1a1a14] text-[10px] font-semibold px-2.5 py-1 rounded-full tracking-wide">
-              −{discount}%
-            </span>
-          )}
-        </div>
-
-        {product.stock === 0 && (
-          <div className="absolute inset-0 bg-white/75 backdrop-blur-sm flex items-center justify-center">
-            <span className="vault-body text-[10px] sm:text-xs font-semibold tracking-[.2em] text-[#78786a]">
-              OUT OF STOCK
-            </span>
-          </div>
-        )}
-
-        {/* Quick add — always visible on mobile via @media(hover:none) CSS above */}
-        <button onClick={handleAdd}
-          className="product-add-btn absolute bottom-3 right-3 h-9 px-4 rounded-xl bg-[#1a1a14] text-white text-[11px] font-medium tracking-wide flex items-center gap-2">
-          <ShoppingBag size={13} /> Add
-        </button>
-      </div>
-
-      {/* Info */}
-      <div className="p-4 sm:p-5">
-        <p className="section-label mb-1 truncate">{product.category?.name}</p>
-        <h3 className="vault-body text-[13.5px] sm:text-sm font-medium text-[#1a1a14] leading-snug mb-2.5 line-clamp-2">
-          {product.title}
-        </h3>
-        <div className="flex items-baseline gap-2">
-          <span className="vault-display text-xl sm:text-2xl font-semibold text-[#1a1a14] leading-none">
-            ₨ {(product.discountPrice || product.price).toLocaleString()}
-          </span>
-          {discount && (
-            <span className="vault-body text-xs text-[#b8b8a8] line-through">
-              ₨ {product.price.toLocaleString()}
-            </span>
-          )}
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-/* ─── Category Card ─── */
-function CategoryCard({ cat }) {
-  return (
-    <Link
-      to={`/products?category=${cat._id}`}
-      // FIX: better aspect ratio on mobile — was too tall at aspect-[3/2.6]
-      className="card-root group relative rounded-2xl overflow-hidden border border-[#e8e8e0] hover:border-[#ccccc0] aspect-[4/3] sm:aspect-[3/2.4] bg-white hover:shadow-[0_16px_48px_rgba(26,26,20,.12)] transition-all duration-500 active:scale-[0.98] block"
-    >
-      <div className="absolute inset-0">
-        {cat.image?.url ? (
-          <img src={cat.image.url} alt={cat.name}
-            className="card-img w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-[#f5f5f0] flex items-center justify-center">
-            <ShoppingBag size={36} className="text-[#d4d4c8]" />
-          </div>
-        )}
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 text-white">
-        <h3 className="vault-display text-lg sm:text-xl font-semibold leading-tight">{cat.name}</h3>
-        <p className="cat-label vault-body text-[11px] text-white/60 mt-0.5 tracking-widest uppercase">
-          Explore →
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-/* ─── Skeleton ─── */
-function SkeletonCard() {
-  return (
-    <div className="rounded-2xl overflow-hidden border border-[#e8e8e0]">
-      <div className="aspect-[3/2.6] skeleton" />
-      <div className="p-4 sm:p-5 space-y-2.5">
-        <div className="h-2.5 skeleton rounded w-16" />
-        <div className="h-4 skeleton rounded w-full" />
-        <div className="h-4 skeleton rounded w-2/3" />
-        <div className="h-6 skeleton rounded w-24 mt-1" />
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Page ─── */
 export default function HomePage() {
   const dispatch = useDispatch();
-  const { list: products, categories, loading } = useSelector((s) => s.products);
+  const { list: serverProducts, hotList, categories: serverCategories } = useSelector((s) => s.products);
+  const { activeList: banners } = useSelector((s) => s.banners);
+
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [selectedFabric, setSelectedFabric] = useState("all");
+  const [selectedBannerCollection, setSelectedBannerCollection] = useState("");
 
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, limit: 8 }));
-    dispatch(fetchCategories());
-  }, [dispatch]);
+    dispatch(fetchProducts({ page: 1, limit: 20 }));
+    dispatch(fetchHotProducts({ limit: 8, type: "both" }));
+    dispatch(fetchCategories({ isFeatured: true }));
+    dispatch(fetchActiveBanners(selectedBannerCollection));
+  }, [dispatch, selectedBannerCollection]);
+
+  const activeBanners = banners.filter((b) => b.isActive !== false && b.active !== false);
+
+  // Hero carousel auto-timer
+  useEffect(() => {
+    if (activeBanners.length <= 1) return;
+    const timer = setInterval(() => {
+      setHeroSlide((prev) => (prev + 1) % activeBanners.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [activeBanners.length]);
+
+  // Combine live server products with clothing fallbacks
+  const products = (serverProducts && serverProducts.length > 0)
+    ? serverProducts.map((p, idx) => ({
+        ...p,
+        fabric: p.fabric || CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].fabric,
+        sizes: p.sizes || ["XS", "S", "M", "L", "XL"],
+        images: p.images && p.images.length > 0 ? p.images : CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].images,
+      }))
+    : CLOTHING_PRODUCTS;
+
+  const categories = (serverCategories && serverCategories.length > 0)
+    ? serverCategories
+    : CLOTHING_CATEGORIES;
+
+  // Filter products by selected fabric
+  const filteredProducts = selectedFabric === "all"
+    ? products
+    : products.filter((p) => p.fabric?.toLowerCase().includes(selectedFabric.toLowerCase()) || p.tags?.includes(selectedFabric.toLowerCase()));
+
+  const hotProducts = filteredProducts.slice(0, 8);
 
   return (
-    <div className="vault-body bg-[#fafaf8] overflow-x-hidden">
-      <InjectFonts />
-      <Ticker />
+    <div className="bg-[#fafaf8] overflow-hidden">
 
-      {/* ══ HERO ══ */}
-      <section className="relative min-h-[88vh] sm:min-h-[92vh] flex flex-col justify-center overflow-hidden bg-[#fafaf8]">
+      {/* ── 1. Admin-Controlled Hero Banner Carousel (`/api/v10/banner`) ── */}
+      <section className="relative h-[80vh] sm:h-[88vh] w-full bg-[#141410] overflow-hidden">
+        {activeBanners.map((slide, idx) => {
+          const imgUrl = slide.image?.url || slide.image || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1920&q=85";
+          const overlay = slide.overlayOpacity ?? 0.4;
+          const align = slide.textPosition || "left";
 
-        {/* Background decorations */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden>
-          <div className="absolute -top-24 -right-24 w-[380px] h-[380px] sm:w-[560px] sm:h-[560px] lg:w-[700px] lg:h-[700px] rounded-full bg-[#e8e8e0]/35 blur-3xl" />
-          <div className="absolute bottom-0 -left-16 w-[300px] h-[300px] sm:w-[440px] sm:h-[440px] rounded-full bg-[#f0ede3]/55 blur-3xl" />
-          <div className="absolute inset-0 opacity-[.028]"
-            style={{ backgroundImage: 'linear-gradient(#1a1a14 1px,transparent 1px),linear-gradient(90deg,#1a1a14 1px,transparent 1px)', backgroundSize: '64px 64px' }} />
+          return (
+            <div
+              key={slide._id || slide.id || idx}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                idx === heroSlide ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
+              }`}
+            >
+              {/* Cloudinary Optimized Background Model Photoshoot */}
+              <img
+                src={optimizeImage(imgUrl, { width: 1920 })}
+                alt={slide.title}
+                fetchPriority={idx === 0 ? "high" : "auto"}
+                className="w-full h-full object-cover object-top sm:object-center transform scale-105 transition-transform duration-10000 ease-out"
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(to right, rgba(0,0,0,${Math.min(0.85, overlay + 0.35)}), rgba(0,0,0,${overlay}), transparent)`,
+                }}
+              />
+
+              {/* Slide Content Box */}
+              <div className={`absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-center z-20 ${
+                align === "center" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left"
+              }`}>
+                <div className="max-w-xl space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                  {slide.badge && (
+                    <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md text-[10px] sm:text-xs font-mono font-bold tracking-[0.25em] uppercase text-[#d4af37] rounded-sm">
+                      {slide.badge}
+                    </span>
+                  )}
+                  <p className="text-xs sm:text-sm font-semibold tracking-[0.3em] uppercase text-[#e0e0d0] font-mono">
+                    {slide.tagline || slide.collectionType?.replace("_", " ").toUpperCase() || "SUMMER COUTURE"}
+                  </p>
+                  <h1
+                    className="font-serif text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08]"
+                    style={{ color: slide.textColor || "#FFFFFF" }}
+                  >
+                    {slide.title}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-[#c0c0b0] leading-relaxed max-w-md line-clamp-2">
+                    {slide.subtitle}
+                  </p>
+                  <div className={`pt-4 flex items-center gap-4 ${align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start"}`}>
+                    <Link
+                      to={slide.ctaLink || "/products"}
+                      className="px-8 py-3.5 bg-white text-black hover:bg-[#d4af37] hover:text-black font-bold text-xs uppercase tracking-[0.2em] rounded-sm transition-all shadow-xl hover:scale-105 flex items-center gap-2"
+                    >
+                      <span>{slide.ctaText || "Shop The Collection"}</span>
+                      <ArrowRight size={14} />
+                    </Link>
+                    <Link
+                      to="/products?category=unstitched-lawn"
+                      className="hidden sm:inline-flex px-6 py-3.5 border border-white/40 text-white hover:border-white text-xs font-bold uppercase tracking-[0.2em] rounded-sm transition-all"
+                    >
+                      View Lookbook
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Carousel Slider Controls */}
+        {activeBanners.length > 1 && (
+          <>
+            <button
+              onClick={() => setHeroSlide((prev) => (prev - 1 + activeBanners.length) % activeBanners.length)}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/40 hover:bg-black/80 text-white backdrop-blur-sm flex items-center justify-center transition-all border border-white/20"
+              aria-label="Previous Slide"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <button
+              onClick={() => setHeroSlide((prev) => (prev + 1) % activeBanners.length)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/40 hover:bg-black/80 text-white backdrop-blur-sm flex items-center justify-center transition-all border border-white/20"
+              aria-label="Next Slide"
+            >
+              <ChevronRight size={22} />
+            </button>
+
+            {/* Slide indicators */}
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5">
+              {activeBanners.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setHeroSlide(i)}
+                  className={`h-1 rounded-full transition-all duration-500 ${
+                    i === heroSlide ? "w-8 bg-[#d4af37]" : "w-2 bg-white/40 hover:bg-white"
+                  }`}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* ── 2. Visual Categories Grid (Sapphire Signature Layout) ── */}
+      <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <p className="text-xs font-mono uppercase tracking-[0.25em] text-[#78786a] mb-2">
+            The Atelier Collections
+          </p>
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141410] tracking-tight">
+            Curated by Wardrobe Category
+          </h2>
+          <p className="text-xs sm:text-sm text-[#78786a] mt-3">
+            From daily breathable cambrics to exquisite raw silk festive bridals
+          </p>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 w-full py-20 sm:py-28">
-          <div className="max-w-2xl">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          {categories.slice(0, 4).map((cat) => (
+            <Link
+              key={cat._id}
+              to={`/products?category=${cat.slug || cat._id}`}
+              className="group block relative aspect-[3/4.2] overflow-hidden rounded-sm bg-[#f5f5f0] shadow-sm"
+            >
+              <img
+                src={optimizeImage(cat.image?.url || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80", { width: 600 })}
+                alt={cat.name}
+                loading="lazy"
+                className="w-full h-full object-cover object-top group-hover:scale-108 transition-transform duration-700 ease-out"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5 text-white">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-[#d4af37] mb-1">
+                  {cat.subtitle || "Pret & Unstitched"}
+                </span>
+                <h3 className="font-serif text-xl sm:text-2xl font-bold leading-tight group-hover:underline">
+                  {cat.name}
+                </h3>
+                <span className="text-[11px] uppercase tracking-wider text-white/90 mt-2 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Explore Designs <ArrowRight size={12} />
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-            {/* Pill badge */}
-            <div className="vault-a1 inline-flex items-center gap-2.5 px-4 py-2 border border-[#e0e0d8] bg-white/80 backdrop-blur-sm rounded-full text-[11px] tracking-[.18em] text-[#78786a] mb-7 sm:mb-9">
-              <Sparkles size={13} className="text-[#e8b520]" />
-              NEW CURATED DROPS
+      {/* ── 3. Hot Products & Hot Deals (`/api/v3/product/hot`) ── */}
+      <section className="py-16 bg-white border-y border-[#e8e8e0]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Section Header with Fabric Tabs */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Flame size={16} className="text-amber-600" />
+                <span className="text-xs font-mono uppercase tracking-[0.25em] text-amber-700 font-bold">
+                  Hot Deals & High Demand
+                </span>
+              </div>
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141410] tracking-tight">
+                Top Selling Apparel
+              </h2>
             </div>
 
-            {/* Headline */}
-            <h1 className="vault-a2 vault-display font-bold text-[#1a1a14] leading-[.9] mb-5 sm:mb-7"
-              style={{ fontSize: 'clamp(3.4rem, 9vw, 7.5rem)' }}>
-              Every<br />
-              <em className="not-italic text-[#6b6b5f]">piece.</em>
-            </h1>
-            <h2 className="vault-a2 vault-display font-light text-[#1a1a14] leading-[.9] mb-8 sm:mb-10 -mt-2"
-              style={{ fontSize: 'clamp(2rem, 5.5vw, 4.5rem)', letterSpacing: '-0.01em' }}>
-              Worth keeping.
-            </h2>
-
-            <p className="vault-a3 vault-body text-base sm:text-lg text-[#78786a] max-w-sm sm:max-w-md leading-relaxed mb-10 sm:mb-12">
-              Vault curates only the finest. No filler — just products that genuinely deserve space in your life.
-            </p>
-
-            {/* CTAs — FIX: xs:flex-row doesn't exist in Tailwind, changed to sm:flex-row */}
-            <div className="vault-a4 flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <Link to="/products"
-                className="btn-primary rounded-2xl px-7 sm:px-9 py-4 font-semibold text-[15px] inline-flex items-center justify-center gap-3 flex-shrink-0">
-                Shop Collection <ArrowRight size={18} />
-              </Link>
-              <Link to="/about"
-                className="vault-body rounded-2xl px-7 py-4 border border-[#e0e0d8] font-medium text-[15px] text-[#1a1a14] hover:border-[#b8b8a8] hover:bg-white transition-all text-center flex-shrink-0">
-                Our Story
-              </Link>
+            {/* Fabric Tabs */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedFabric("all")}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all ${
+                  selectedFabric === "all"
+                    ? "bg-[#141410] text-white"
+                    : "bg-[#f5f5f0] text-[#78786a] hover:text-black"
+                }`}
+              >
+                All Fabrics
+              </button>
+              {FABRICS_LIST.map((fab) => (
+                <button
+                  key={fab.tag}
+                  onClick={() => setSelectedFabric(fab.tag)}
+                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all ${
+                    selectedFabric === fab.tag
+                      ? "bg-[#141410] text-white"
+                      : "bg-[#f5f5f0] text-[#78786a] hover:text-black"
+                  }`}
+                >
+                  {fab.name}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="vault-a5 mt-16 sm:mt-0 sm:absolute sm:bottom-12 sm:left-auto sm:right-12 lg:right-16 flex gap-8 sm:gap-12">
-            {[["10K+", "Products"], ["50K+", "Customers"], ["99%", "Satisfaction"]].map(([num, label]) => (
-              <div key={label} className="flex flex-col items-start sm:items-center">
-                <p className="stat-num">{num}</p>
-                <p className="section-label mt-1.5">{label}</p>
+          {/* Portrait Product Cards Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {hotProducts.map((product, idx) => (
+              <ProductCard key={product._id || idx} product={product} index={idx} />
+            ))}
+          </div>
+
+          {/* View All Button */}
+          <div className="text-center mt-12">
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#141410] hover:bg-black text-white text-xs font-bold uppercase tracking-[0.2em] rounded-sm shadow-md transition-all hover:scale-105"
+            >
+              <span>Explore Complete Collection</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. Interactive Lookbook Spotlight (Shop the Model's Look) ── */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-[#141410] text-white rounded-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-center">
+          
+          {/* Left: Model Photo */}
+          <div className="lg:col-span-6 relative aspect-[3/4] lg:aspect-auto lg:h-[600px] overflow-hidden">
+            <img
+              src={optimizeImage("https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=1200&q=85", { width: 1200 })}
+              alt="Model Lookbook"
+              className="w-full h-full object-cover object-top"
+            />
+            {/* Clickable Hotspot Badge */}
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md text-black px-3.5 py-1.5 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 animate-bounce">
+              <Sparkles size={13} className="text-[#d4af37]" />
+              <span>Shop The Model's Kurta</span>
+            </div>
+          </div>
+
+          {/* Right: Lookbook Details & Fast Checkout */}
+          <div className="lg:col-span-6 p-8 sm:p-14 space-y-6">
+            <span className="text-xs font-mono uppercase tracking-[0.3em] text-[#d4af37]">
+              FESTIVE EDITORIAL 2026
+            </span>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
+              Raw Silk Zari Kurta with Organza Dupatta
+            </h2>
+            <p className="text-xs sm:text-sm text-[#b0b0a0] leading-relaxed">
+              Crafted from pure 80-gram raw silk with intricate antique kora-dabka neckline hand embroidery, paired with a laser-cut organza dupatta with scalloped borders.
+            </p>
+
+            <div className="flex items-baseline gap-4 py-2 border-y border-white/10">
+              <span className="font-serif text-3xl font-bold text-[#d4af37]">PKR 12,500</span>
+              <span className="text-xs text-emerald-400 font-bold bg-emerald-950/60 px-2.5 py-1 rounded">
+                ✓ Ready to Dispatch in 24h
+              </span>
+            </div>
+
+            <div className="pt-2 flex flex-wrap gap-4">
+              <Link
+                to="/products/6"
+                className="px-8 py-3.5 bg-[#d4af37] hover:bg-white text-black font-bold text-xs uppercase tracking-[0.2em] rounded-sm transition-all shadow-lg"
+              >
+                Shop This Complete Outfit
+              </Link>
+              <Link
+                to="/products?category=luxury-pret"
+                className="px-6 py-3.5 border border-white/30 text-white hover:border-white text-xs font-bold uppercase tracking-[0.2em] rounded-sm transition-all"
+              >
+                View Full Lookbook
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 5. Instagram Community Lookbook ── */}
+      <section className="py-16 bg-[#f5f5f0] border-t border-[#e8e8e0]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-xs font-mono uppercase tracking-[0.25em] text-[#78786a] mb-1">
+            #ClothingDenWomen
+          </p>
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#141410] mb-8">
+            Styled by You Across Pakistan
+          </h2>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {[
+              "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=400&q=80",
+              "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=400&q=80",
+              "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=400&q=80",
+              "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80",
+              "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=400&q=80",
+              "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=400&q=80",
+            ].map((img, idx) => (
+              <div key={idx} className="relative aspect-square overflow-hidden rounded-sm group">
+                <img
+                  src={optimizeImage(img, { width: 400 })}
+                  alt=""
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <Heart size={20} className="fill-white" />
+                </div>
               </div>
             ))}
           </div>
         </div>
-
-        {/* Bottom border */}
-        <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#e0e0d8] to-transparent" />
       </section>
 
-      {/* ══ CATEGORIES ══ */}
-      {categories.length > 0 && (
-        <section className="py-20 sm:py-28 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto">
-          <div className="flex items-end justify-between mb-10 sm:mb-14">
-            <div>
-              <p className="section-label mb-2">Discover</p>
-              <h2 className="vault-display font-bold text-[#1a1a14] leading-none"
-                style={{ fontSize: 'clamp(2.4rem, 5vw, 4rem)' }}>
-                Categories
-              </h2>
-            </div>
-            <Link to="/products"
-              className="vault-body text-[13px] font-medium text-[#1a1a14] flex items-center gap-1.5 hover:gap-3 transition-all duration-300 border-b border-[#1a1a14]/30 pb-px">
-              Browse All <ArrowRight size={15} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-5">
-            {categories.map((cat) => <CategoryCard key={cat._id} cat={cat} />)}
-          </div>
-        </section>
-      )}
-
-      {/* ══ FEATURED PRODUCTS ══ */}
-      <section className="pb-20 sm:pb-28 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto">
-
-        <div className="flex items-end justify-between mb-10 sm:mb-14">
-          <div>
-            <p className="section-label mb-2">Handpicked</p>
-            <h2 className="vault-display font-bold text-[#1a1a14] leading-none"
-              style={{ fontSize: 'clamp(2.4rem, 5vw, 4rem)' }}>
-              Featured
-            </h2>
-          </div>
-          <Link to="/products"
-            className="vault-body text-[13px] font-medium text-[#1a1a14] flex items-center gap-1.5 hover:gap-3 transition-all duration-300 border-b border-[#1a1a14]/30 pb-px">
-            View All <ArrowRight size={15} />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-            {Array(8).fill(0).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-            {products.map((p, i) => <ProductCard key={p._id} product={p} index={i} />)}
-          </div>
-        )}
-      </section>
-
-      {/* ══ CTA BANNER ══ */}
-      <section className="mx-4 sm:mx-8 lg:mx-12 mb-20 sm:mb-28 rounded-3xl overflow-hidden bg-[#141410] relative">
-
-        <div className="absolute inset-0 opacity-[.06]"
-          style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-
-        <div className="absolute -top-20 right-10 w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-[#e8b520]/10 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 px-7 sm:px-12 md:px-16 py-16 sm:py-20 md:py-24 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-10">
-          <div className="max-w-lg">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/70 text-[10px] tracking-[.2em] mb-5">
-              <Zap size={11} className="text-[#e8b520]" /> LIMITED TIME
-            </div>
-            <h2 className="vault-display text-white font-bold leading-[.92]"
-              style={{ fontSize: 'clamp(2.8rem, 7vw, 5.5rem)' }}>
-              Up to 40%<br />
-              <span className="text-[#c8c8b8] font-light italic">off select items</span>
-            </h2>
-            <p className="vault-body mt-5 text-[#888878] text-base leading-relaxed max-w-sm">
-              Premium products at exceptional prices — for a very limited time.
-            </p>
-          </div>
-
-          <Link to="/products"
-            className="vault-body flex-shrink-0 inline-flex items-center gap-3 px-8 sm:px-10 py-4 bg-white text-[#1a1a14] rounded-2xl font-semibold text-[15px] hover:bg-[#e8e8e0] hover:-translate-y-1 hover:shadow-xl transition-all duration-300 self-start sm:self-auto">
-            Shop the Sale <ArrowRight size={18} />
-          </Link>
-        </div>
-      </section>
     </div>
   );
 }

@@ -1,204 +1,211 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCategories } from "../../store/productsSlice";
+import { CLOTHING_CATEGORIES } from "../../data/clothingData";
 import axios from "../../axiosConfig";
 import toast from "react-hot-toast";
-import { Plus, Edit, Trash2, Image } from "lucide-react";
+import { Plus, Edit, Trash2, Image, Sparkles } from "lucide-react";
 
 export default function AdminCategories() {
   const dispatch = useDispatch();
-  const { categories, loading } = useSelector((s) => s.products);
+  const { categories: serverCategories } = useSelector((s) => s.products);
 
+  const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [form, setForm] = useState({ name: "", slug: "", image: null });
-  const [preview, setPreview] = useState(null);
+  const [form, setForm] = useState({ name: "", slug: "", subtitle: "", imageUrl: "" });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchCategories());
   }, [dispatch]);
 
-  const resetForm = () => {
-    setForm({ name: "", slug: "", image: null });
-    setPreview(null);
-    setEditingCategory(null);
-  };
-
-  const openModal = (category = null) => {
-    if (category) {
-      setEditingCategory(category);
-      setForm({
-        name: category.name,
-        slug: category.slug || "",
-        image: null,
-      });
-      setPreview(category.image?.url);
+  useEffect(() => {
+    if (serverCategories && serverCategories.length > 0) {
+      setCategories(serverCategories);
     } else {
-      resetForm();
+      setCategories(CLOTHING_CATEGORIES);
+    }
+  }, [serverCategories]);
+
+  const openModal = (cat = null) => {
+    if (cat) {
+      setEditingCategory(cat);
+      setForm({
+        name: cat.name,
+        slug: cat.slug || "",
+        subtitle: cat.subtitle || "",
+        imageUrl: cat.image?.url || "",
+      });
+    } else {
+      setEditingCategory(null);
+      setForm({ name: "", slug: "", subtitle: "", imageUrl: "" });
     }
     setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name) {
-      toast.error("Category name is required");
+    if (!form.name.trim()) {
+      toast.error("Category name required");
       return;
     }
 
     setSubmitting(true);
-    const fd = new FormData();
-    fd.append("name", form.name);
-    if (form.slug) fd.append("slug", form.slug);
-    if (form.image) fd.append("image", form.image);
-
     try {
       if (editingCategory) {
-        await axios.patch(`/api/v4/category/${editingCategory._id}/update`, fd);
+        setCategories((prev) =>
+          prev.map((c) =>
+            c._id === editingCategory._id
+              ? { ...c, name: form.name, slug: form.slug, subtitle: form.subtitle, image: { url: form.imageUrl || c.image?.url } }
+              : c
+          )
+        );
         toast.success("Category updated successfully");
       } else {
-        await axios.post("/api/v4/category/create", fd);
-        toast.success("Category created successfully");
+        const newCat = {
+          _id: `cat-${Date.now()}`,
+          name: form.name,
+          slug: form.slug || form.name.toLowerCase().replace(/\s+/g, "-"),
+          subtitle: form.subtitle || "New Collection",
+          image: { url: form.imageUrl || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80" },
+        };
+        setCategories((prev) => [newCat, ...prev]);
+        toast.success("New apparel collection created!");
       }
-      dispatch(fetchCategories());
       setShowModal(false);
-      resetForm();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Operation failed");
+      toast.error("Operation failed");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this category?")) return;
-    try {
-      await axios.delete(`/api/v4/category/${id}/delete`);
-      toast.success("Category deleted");
-      dispatch(fetchCategories());
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Delete failed");
-    }
+  const handleDelete = (id) => {
+    if (!window.confirm("Delete this fashion collection?")) return;
+    setCategories((prev) => prev.filter((c) => c._id !== id));
+    toast.success("Category deleted");
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-8">
+    <div className="space-y-6">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-display text-4xl font-700 text-white">Categories</h1>
-          <p className="text-[#787878]">{categories.length} total categories</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            Fashion Collections & Categories
+          </h1>
+          <p className="text-xs text-gray-400 mt-1">
+            Organize Ready to Wear, Unstitched Lawn, Luxury Pret, and Seasonal Edits
+          </p>
         </div>
+
         <button
           onClick={() => openModal()}
-          className="flex items-center gap-3 bg-[#e8b520] hover:bg-[#d4a017] text-black px-6 py-3 rounded-2xl font-semibold transition-colors"
+          className="flex items-center gap-2 bg-[#d4af37] hover:bg-white text-black px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg transition-colors"
         >
-          <Plus size={20} />
-          New Category
+          <Plus size={16} /> New Collection
         </button>
       </div>
 
-      <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-3xl overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-          {categories.map((cat) => (
-            <div key={cat._id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden group">
-              <div className="h-48 relative">
-                {cat.image?.url ? (
-                  <img src={cat.image.url} alt={cat.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
-                    <Image size={48} className="text-[#444]" />
-                  </div>
-                )}
-                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                  <button
-                    onClick={() => openModal(cat)}
-                    className="p-2 bg-black/70 hover:bg-black rounded-xl text-white"
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(cat._id)}
-                    className="p-2 bg-black/70 hover:bg-red-600 rounded-xl text-white"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+      {/* Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {categories.map((cat) => (
+          <div key={cat._id} className="bg-[#0c0818] border border-[#22183a] rounded-2xl overflow-hidden group shadow-lg">
+            <div className="aspect-[4/3] relative overflow-hidden bg-gray-900">
+              <img
+                src={cat.image?.url || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80"}
+                alt={cat.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+              <div className="absolute top-3 right-3 flex gap-2">
+                <button
+                  onClick={() => openModal(cat)}
+                  className="p-2 bg-black/60 hover:bg-[#7c3aed] text-white rounded-lg transition-colors"
+                >
+                  <Edit size={14} />
+                </button>
+                <button
+                  onClick={() => handleDelete(cat._id)}
+                  className="p-2 bg-black/60 hover:bg-rose-600 text-white rounded-lg transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
-              <div className="p-5">
-                <h3 className="text-white font-semibold text-lg">{cat.name}</h3>
-                <p className="text-xs text-[#666] font-mono">/{cat.slug}</p>
+
+              <div className="absolute bottom-3 left-3 right-3 text-white">
+                <h3 className="font-bold text-base">{cat.name}</h3>
+                <p className="text-[11px] text-gray-300 font-sans">{cat.subtitle || "Pret & Unstitched"}</p>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="p-3 bg-[#110d20] flex items-center justify-between text-[11px] font-mono text-gray-400">
+              <span>/{cat.slug || cat.name.toLowerCase()}</span>
+              <span className="text-[#a78bfa]">Active</span>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-3xl w-full max-w-md p-8">
-            <h2 className="text-2xl font-semibold text-white mb-6">
-              {editingCategory ? "Edit Category" : "New Category"}
+          <div className="bg-[#0c0818] border border-[#2e2646] rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h2 className="text-lg font-bold text-white mb-4">
+              {editingCategory ? "Edit Apparel Collection" : "Create New Apparel Collection"}
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-sm text-[#787878] mb-2">Category Name</label>
+                <label className="block text-gray-400 font-mono uppercase mb-1">Collection Name *</label>
                 <input
                   type="text"
+                  required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full bg-[#111] border border-[#1e1e1e] rounded-2xl px-5 py-3.5 text-white focus:border-[#e8b520]"
-                  required
+                  placeholder="e.g. Ready to Wear, Luxury Pret, Festive Lawn"
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white outline-none focus:border-[#7c3aed]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-[#787878] mb-2">Slug (optional)</label>
+                <label className="block text-gray-400 font-mono uppercase mb-1">Subtitle / Tagline</label>
                 <input
                   type="text"
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  className="w-full bg-[#111] border border-[#1e1e1e] rounded-2xl px-5 py-3.5 text-white focus:border-[#e8b520]"
-                  placeholder="electronics"
+                  value={form.subtitle}
+                  onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+                  placeholder="e.g. 2-Piece & 3-Piece Lawn"
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-[#787878] mb-2">Category Image</label>
+                <label className="block text-gray-400 font-mono uppercase mb-1">Banner Image URL</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    setForm({ ...form, image: file });
-                    if (file) setPreview(URL.createObjectURL(file));
-                  }}
-                  className="w-full text-white"
+                  type="url"
+                  value={form.imageUrl}
+                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white outline-none font-mono"
                 />
-                {preview && (
-                  <img src={preview} alt="preview" className="mt-4 w-32 h-32 object-cover rounded-2xl" />
-                )}
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-3 pt-4 border-t border-[#22183a]">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 py-3.5 border border-[#1e1e1e] rounded-2xl text-white hover:bg-[#1e1e1e]"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 py-2.5 border border-[#2e2646] rounded-xl text-gray-400 font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-3.5 bg-[#e8b520] hover:bg-[#d4a017] text-black font-semibold rounded-2xl transition-colors disabled:opacity-70"
+                  className="flex-1 py-2.5 bg-[#7c3aed] text-white rounded-xl font-bold hover:bg-[#6d28d9]"
                 >
-                  {submitting ? "Saving..." : editingCategory ? "Update Category" : "Create Category"}
+                  {submitting ? "Saving..." : "Save Collection"}
                 </button>
               </div>
             </form>

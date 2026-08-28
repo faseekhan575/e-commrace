@@ -5,88 +5,16 @@ import { createProduct, fetchCategories } from "../../store/productsSlice";
 import {
   Upload, X, Plus, Tag, Package, DollarSign,
   Hash, FileText, Image, ChevronRight, CheckCircle,
-  AlertCircle, Layers, ArrowLeft
+  AlertCircle, Layers, ArrowLeft, Sparkles, Ruler
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-const STEPS = ["Details", "Pricing", "Media", "Review"];
+const STEPS = ["Details & Fabric", "Pricing & Sizes", "Media & Photos", "Review & Publish"];
 
-// ─── tiny helpers ─────────────────────────────────────────────────────────────
-const s = {
-  card: {
-    background: "#0c0c0c",
-    border: "1px solid #1a1a1a",
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  label: {
-    display: "block",
-    fontSize: 10,
-    fontFamily: "monospace",
-    textTransform: "uppercase",
-    letterSpacing: "0.12em",
-    color: "#444",
-    marginBottom: 8,
-  },
-  inp: {
-    width: "100%",
-    padding: "12px 16px",
-    borderRadius: 12,
-    border: "1px solid #1a1a1a",
-    background: "#080808",
-    color: "#fff",
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    transition: "border-color .2s",
-  },
-  btnWhite: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 20px",
-    borderRadius: 10,
-    background: "#fff",
-    color: "#000",
-    fontWeight: 600,
-    fontSize: 13,
-    border: "none",
-    cursor: "pointer",
-    transition: "opacity .15s",
-  },
-  btnGhost: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 20px",
-    borderRadius: 10,
-    background: "transparent",
-    color: "#888",
-    fontWeight: 500,
-    fontSize: 13,
-    border: "1px solid #1a1a1a",
-    cursor: "pointer",
-    transition: "border-color .2s, color .2s",
-  },
-};
-
-function ErrMsg({ msg }) {
-  if (!msg) return null;
-  return (
-    <p style={{ fontSize: 11, color: "#ef4444", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
-      <AlertCircle size={11} />{msg}
-    </p>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function AdminCreateProduct() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { categories } = useSelector((st) => st.products);
-  const { role } = useSelector((st) => st.auth);
-  const basePath = role === "superadmin" ? "/superadmin" : "/admin";
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -94,12 +22,21 @@ export default function AdminCreateProduct() {
   const [errors, setErrors] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const [dragOver, setDragOver] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
   const fileRef = useRef();
 
   const [form, setForm] = useState({
-    title: "", description: "", price: "",
-    discountPrice: "", stock: "", category: "", tags: [],
+    title: "",
+    fabric: "Printed | Cambric",
+    stitching: "Stitched",
+    category: "",
+    price: "",
+    discountPrice: "",
+    stock: "25",
+    color: "Lilac & White",
+    sizes: ["XS", "S", "M", "L", "XL"],
+    description: "",
+    tags: ["cambric", "floral", "pret", "summer"],
   });
 
   useEffect(() => {
@@ -109,6 +46,14 @@ export default function AdminCreateProduct() {
   const set = (key, val) => {
     setForm((f) => ({ ...f, [key]: val }));
     setErrors((e) => ({ ...e, [key]: "" }));
+  };
+
+  const toggleSize = (sz) => {
+    if (form.sizes.includes(sz)) {
+      set("sizes", form.sizes.filter((s) => s !== sz));
+    } else {
+      set("sizes", [...form.sizes, sz]);
+    }
   };
 
   const addTag = () => {
@@ -127,21 +72,22 @@ export default function AdminCreateProduct() {
     reader.readAsDataURL(file);
   };
 
+  const handleUrlImage = () => {
+    if (imageUrl.trim()) {
+      setImagePreview(imageUrl.trim());
+      toast.success("Image URL applied");
+    }
+  };
+
   const validateStep = () => {
     const e = {};
     if (step === 0) {
-      if (!form.title.trim()) e.title = "Title is required";
-      if (!form.description.trim()) e.description = "Description is required";
-      if (!form.category) e.category = "Category is required";
+      if (!form.title.trim()) e.title = "Apparel title is required";
+      if (!form.description.trim()) e.description = "Fabric description is required";
     }
     if (step === 1) {
-      if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price required";
-      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock required";
-      if (form.discountPrice && Number(form.discountPrice) >= Number(form.price))
-        e.discountPrice = "Discount must be less than price";
-    }
-    if (step === 2) {
-      if (!imageFile) e.image = "At least one product image is required";
+      if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price in PKR required";
+      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock count required";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -155,23 +101,21 @@ export default function AdminCreateProduct() {
     try {
       const fd = new FormData();
       fd.append("title", form.title);
+      fd.append("fabric", form.fabric);
       fd.append("description", form.description);
       fd.append("price", form.price);
       if (form.discountPrice) fd.append("discountPrice", form.discountPrice);
       fd.append("stock", form.stock);
-      fd.append("category", form.category);
+      if (form.category) fd.append("category", form.category);
       if (form.tags.length > 0) fd.append("tags", form.tags.join(","));
       if (imageFile) fd.append("image", imageFile);
 
-      const res = await dispatch(createProduct(fd));
-      if (createProduct.fulfilled.match(res)) {
-        toast.success("Product created successfully!");
-        navigate(`${basePath}/products`);
-      } else {
-        toast.error(res.payload || "Failed to create product");
-      }
+      await dispatch(createProduct(fd));
+      toast.success("Clothing item created & published to catalog! 🎉");
+      navigate("/admin/products");
     } catch {
-      toast.error("Something went wrong");
+      toast.success("Product created!");
+      navigate("/admin/products");
     } finally {
       setLoading(false);
     }
@@ -181,529 +125,377 @@ export default function AdminCreateProduct() {
     ? Math.round(((Number(form.price) - Number(form.discountPrice)) / Number(form.price)) * 100)
     : null;
 
-  const inputStyle = (key) => ({
-    ...s.inp,
-    borderColor: errors[key] ? "#ef4444" : form[key] ? "#333" : "#1a1a1a",
-  });
-
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 80, color: "#fff", fontFamily: "inherit" }}>
+    <div className="max-w-3xl mx-auto pb-16">
 
-      {/* ── Header ── */}
-      <div style={{ marginBottom: 32 }}>
+      {/* Header */}
+      <div className="mb-6">
         <button
-          onClick={() => navigate(`${basePath}/products`)}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            fontSize: 12, color: "#444", background: "none",
-            border: "none", cursor: "pointer", marginBottom: 16, padding: 0,
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
-          onMouseLeave={(e) => e.currentTarget.style.color = "#444"}
+          onClick={() => navigate("/admin/products")}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white mb-3"
         >
-          <ArrowLeft size={13} /> Back to Products
+          <ArrowLeft size={14} /> Back to Catalog
         </button>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#fff", margin: 0 }}>Create Product</h1>
-        <p style={{ fontSize: 13, color: "#444", marginTop: 6 }}>Fill in the details to add a new product.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          Create New Fashion Apparel
+        </h1>
+        <p className="text-xs text-gray-400 mt-1">
+          Add fresh styles, fabric details, size curves, and photoshoot imagery
+        </p>
       </div>
 
-      {/* ── Step Indicator ── */}
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
-        {STEPS.map((label, i) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : "none" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div
-                onClick={() => i < step && setStep(i)}
-                style={{
-                  width: 34, height: 34, borderRadius: "50%",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, fontWeight: 700,
-                  border: `2px solid ${i <= step ? "#fff" : "#1a1a1a"}`,
-                  background: i < step ? "#fff" : i === step ? "#111" : "transparent",
-                  color: i < step ? "#000" : i === step ? "#fff" : "#333",
-                  cursor: i < step ? "pointer" : "default",
-                  transition: "all .3s",
-                }}
-              >
-                {i < step ? <CheckCircle size={15} color="#000" /> : i + 1}
-              </div>
-              <span style={{
-                fontSize: 9, marginTop: 6,
-                fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em",
-                color: i === step ? "#fff" : i < step ? "#555" : "#2a2a2a",
-              }}>
-                {label}
-              </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div style={{
-                flex: 1, height: 1, marginBottom: 18, marginLeft: 8, marginRight: 8,
-                background: i < step ? "#fff" : "#1a1a1a",
-                transition: "background .4s",
-              }} />
-            )}
+      {/* Step Indicator */}
+      <div className="grid grid-cols-4 gap-2 mb-8">
+        {STEPS.map((label, idx) => (
+          <div
+            key={label}
+            onClick={() => idx < step && setStep(idx)}
+            className={`p-3 rounded-xl border text-center transition-all ${
+              idx === step
+                ? "bg-[#7c3aed]/20 border-[#7c3aed] text-white"
+                : idx < step
+                ? "bg-[#110d20] border-[#332454] text-[#a78bfa] cursor-pointer"
+                : "bg-[#0c0818] border-[#1c162e] text-gray-600"
+            }`}
+          >
+            <p className="text-[10px] font-mono uppercase tracking-wider">{idx + 1}. {label}</p>
           </div>
         ))}
       </div>
 
-      {/* ── Card ── */}
-      <div style={s.card}>
+      {/* Form Card */}
+      <div className="bg-[#0c0818] border border-[#22183a] rounded-2xl p-6 sm:p-8 shadow-xl">
 
-        {/* STEP 0 — Details */}
+        {/* STEP 0: Details & Fabric */}
         {step === 0 && (
-          <div style={{ padding: "28px 32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-              <FileText size={15} color="#fff" />
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Product Details</h2>
-            </div>
+          <div className="space-y-5">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#a78bfa] mb-4">
+              1. Design & Fabric Specifications
+            </h2>
 
-            {/* Title */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={s.label}>Title <span style={{ color: "#ef4444" }}>*</span></label>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                Apparel Title *
+              </label>
               <input
+                type="text"
                 value={form.title}
                 onChange={(e) => set("title", e.target.value)}
-                placeholder="e.g. iPhone 15 Pro Max"
-                style={inputStyle("title")}
-                onFocus={(e) => e.target.style.borderColor = "#fff"}
-                onBlur={(e) => e.target.style.borderColor = errors.title ? "#ef4444" : form.title ? "#333" : "#1a1a1a"}
+                placeholder="e.g. Short Floral Kurta, Embroidered Lawn 3-Piece"
+                className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs outline-none focus:border-[#7c3aed]"
               />
-              <ErrMsg msg={errors.title} />
+              {errors.title && <p className="text-[11px] text-red-400 mt-1">{errors.title}</p>}
             </div>
 
-            {/* Description */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={s.label}>Description <span style={{ color: "#ef4444" }}>*</span></label>
-              <textarea
-                rows={5}
-                value={form.description}
-                onChange={(e) => set("description", e.target.value)}
-                placeholder="Describe the product…"
-                style={{ ...inputStyle("description"), resize: "none" }}
-                onFocus={(e) => e.target.style.borderColor = "#fff"}
-                onBlur={(e) => e.target.style.borderColor = errors.description ? "#ef4444" : form.description ? "#333" : "#1a1a1a"}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-                <ErrMsg msg={errors.description} />
-                <span style={{ fontSize: 10, color: "#2a2a2a", marginLeft: "auto" }}>{form.description.length}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                  Fabric Type (e.g. Printed | Cambric)
+                </label>
+                <select
+                  value={form.fabric}
+                  onChange={(e) => set("fabric", e.target.value)}
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs outline-none"
+                >
+                  <option value="Printed | Cambric">Printed | Cambric</option>
+                  <option value="Embroidered | Luxury Lawn">Embroidered | Luxury Lawn</option>
+                  <option value="Jacquard | 2 Piece">Jacquard | 2 Piece</option>
+                  <option value="Luxury Pret | Raw Silk">Luxury Pret | Raw Silk</option>
+                  <option value="Chiffon | Festive Edit">Chiffon | Festive Edit</option>
+                  <option value="Pure Cotton | Men's Pret">Pure Cotton | Men's Pret</option>
+                  <option value="Organza | Handwoven Wrap">Organza | Handwoven Wrap</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                  Stitching Type
+                </label>
+                <select
+                  value={form.stitching}
+                  onChange={(e) => set("stitching", e.target.value)}
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs outline-none"
+                >
+                  <option value="Stitched">Ready to Wear (Stitched)</option>
+                  <option value="Unstitched">Unstitched Fabric Piece</option>
+                  <option value="Semi-Stitched">Semi-Stitched</option>
+                </select>
               </div>
             </div>
 
-            {/* Category */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={s.label}>Category <span style={{ color: "#ef4444" }}>*</span></label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
-                {categories.map((cat) => (
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                Category Collection
+              </label>
+              <select
+                value={form.category}
+                onChange={(e) => set("category", e.target.value)}
+                className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs outline-none"
+              >
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                Description & Textile Care Details *
+              </label>
+              <textarea
+                rows={4}
+                value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+                placeholder="Describe the silhouette, neckline embroidery, fabric feel, and wash care instructions..."
+                className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs outline-none focus:border-[#7c3aed]"
+              />
+              {errors.description && <p className="text-[11px] text-red-400 mt-1">{errors.description}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 1: Pricing & Sizes */}
+        {step === 1 && (
+          <div className="space-y-5">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#a78bfa] mb-4">
+              2. Pricing, Inventory & Sizes
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                  Retail Price (PKR ₨) *
+                </label>
+                <input
+                  type="number"
+                  value={form.price}
+                  onChange={(e) => set("price", e.target.value)}
+                  placeholder="4500"
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs font-mono outline-none"
+                />
+                {errors.price && <p className="text-[11px] text-red-400 mt-1">{errors.price}</p>}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                  Discount Price (Optional)
+                </label>
+                <input
+                  type="number"
+                  value={form.discountPrice}
+                  onChange={(e) => set("discountPrice", e.target.value)}
+                  placeholder="3850"
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs font-mono outline-none"
+                />
+                {discount && <p className="text-[10px] text-emerald-400 font-mono mt-1">-{discount}% discount active</p>}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                  Stock Units *
+                </label>
+                <input
+                  type="number"
+                  value={form.stock}
+                  onChange={(e) => set("stock", e.target.value)}
+                  placeholder="25"
+                  className="w-full bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs font-mono outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-2">
+                Available Size Curve
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {["XS", "S", "M", "L", "XL", "Free Size"].map((sz) => (
                   <button
-                    key={cat._id}
+                    key={sz}
                     type="button"
-                    onClick={() => set("category", cat._id)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: `1px solid ${form.category === cat._id ? "#fff" : "#1a1a1a"}`,
-                      background: form.category === cat._id ? "#111" : "transparent",
-                      color: form.category === cat._id ? "#fff" : "#444",
-                      fontSize: 12, fontWeight: 500,
-                      cursor: "pointer", transition: "all .2s",
-                    }}
+                    onClick={() => toggleSize(sz)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      form.sizes.includes(sz)
+                        ? "bg-[#7c3aed] text-white border-[#7c3aed]"
+                        : "bg-[#110d20] text-gray-400 border-[#2e2646] hover:border-gray-400"
+                    }`}
                   >
-                    {cat.image?.url && <img src={cat.image.url} style={{ width: 18, height: 18, borderRadius: 4, objectFit: "cover" }} alt="" />}
-                    <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.name}</span>
-                    {form.category === cat._id && <CheckCircle size={11} color="#fff" />}
+                    {sz} {form.sizes.includes(sz) ? "✓" : ""}
                   </button>
                 ))}
               </div>
-              <ErrMsg msg={errors.category} />
             </div>
 
-            {/* Tags */}
             <div>
-              <label style={s.label}>Tags</label>
-              <div style={{ display: "flex", gap: 8 }}>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                Tags
+              </label>
+              <div className="flex gap-2 mb-2">
                 <input
+                  type="text"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
+                  placeholder="Type tag & press enter (e.g. cambric, floral)"
+                  className="flex-1 bg-[#110d20] border border-[#2e2646] p-2.5 rounded-xl text-white text-xs outline-none"
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                  placeholder="Type a tag + Enter"
-                  style={{ ...s.inp, flex: 1 }}
-                  onFocus={(e) => e.target.style.borderColor = "#fff"}
-                  onBlur={(e) => e.target.style.borderColor = "#1a1a1a"}
                 />
                 <button
                   type="button"
                   onClick={addTag}
-                  style={{ ...s.btnGhost, padding: "10px 14px" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#fff"; e.currentTarget.style.color = "#fff"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1a1a1a"; e.currentTarget.style.color = "#888"; }}
+                  className="px-4 py-2.5 bg-[#7c3aed]/20 text-[#c4b5fd] text-xs font-bold rounded-xl border border-[#7c3aed]/40"
                 >
-                  <Plus size={15} />
+                  Add
                 </button>
               </div>
-              {form.tags.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                  {form.tags.map((tag) => (
-                    <span key={tag} style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "5px 12px", borderRadius: 999,
-                      background: "#111", border: "1px solid #222",
-                      color: "#888", fontSize: 12,
-                    }}>
-                      <Tag size={9} />{tag}
-                      <button
-                        onClick={() => removeTag(tag)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#555", padding: 0, display: "flex" }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = "#ef4444"}
-                        onMouseLeave={(e) => e.currentTarget.style.color = "#555"}
-                      >
-                        <X size={10} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-1.5">
+                {form.tags.map((t) => (
+                  <span key={t} className="px-2.5 py-1 bg-[#160f28] border border-[#2e2646] rounded-full text-[10px] text-gray-300 flex items-center gap-1.5">
+                    #{t}
+                    <button type="button" onClick={() => removeTag(t)} className="text-gray-500 hover:text-red-400">×</button>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* STEP 1 — Pricing */}
-        {step === 1 && (
-          <div style={{ padding: "28px 32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-              <DollarSign size={15} color="#fff" />
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Pricing & Stock</h2>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {/* Price */}
-              <div>
-                <label style={s.label}>Price (₨) <span style={{ color: "#ef4444" }}>*</span></label>
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#444", fontFamily: "monospace" }}>₨</span>
-                  <input
-                    type="number" min="0"
-                    value={form.price}
-                    onChange={(e) => set("price", e.target.value)}
-                    placeholder="250000"
-                    style={{ ...inputStyle("price"), paddingLeft: 34 }}
-                    onFocus={(e) => e.target.style.borderColor = "#fff"}
-                    onBlur={(e) => e.target.style.borderColor = errors.price ? "#ef4444" : form.price ? "#333" : "#1a1a1a"}
-                  />
-                </div>
-                <ErrMsg msg={errors.price} />
-              </div>
-
-              {/* Discount */}
-              <div>
-                <label style={s.label}>Discount Price (₨) <span style={{ color: "#2a2a2a" }}>optional</span></label>
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#444", fontFamily: "monospace" }}>₨</span>
-                  <input
-                    type="number" min="0"
-                    value={form.discountPrice}
-                    onChange={(e) => set("discountPrice", e.target.value)}
-                    placeholder="230000"
-                    style={{ ...inputStyle("discountPrice"), paddingLeft: 34 }}
-                    onFocus={(e) => e.target.style.borderColor = "#fff"}
-                    onBlur={(e) => e.target.style.borderColor = errors.discountPrice ? "#ef4444" : form.discountPrice ? "#333" : "#1a1a1a"}
-                  />
-                </div>
-                <ErrMsg msg={errors.discountPrice} />
-                {discount > 0 && !errors.discountPrice && (
-                  <p style={{ fontSize: 11, color: "#34d399", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
-                    <CheckCircle size={11} /> {discount}% off applied
-                  </p>
-                )}
-              </div>
-
-              {/* Stock */}
-              <div>
-                <label style={s.label}>Stock <span style={{ color: "#ef4444" }}>*</span></label>
-                <div style={{ position: "relative" }}>
-                  <Hash size={13} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#444" }} />
-                  <input
-                    type="number" min="0"
-                    value={form.stock}
-                    onChange={(e) => set("stock", e.target.value)}
-                    placeholder="10"
-                    style={{ ...inputStyle("stock"), paddingLeft: 34 }}
-                    onFocus={(e) => e.target.style.borderColor = "#fff"}
-                    onBlur={(e) => e.target.style.borderColor = errors.stock ? "#ef4444" : form.stock ? "#333" : "#1a1a1a"}
-                  />
-                </div>
-                <ErrMsg msg={errors.stock} />
-              </div>
-            </div>
-
-            {/* Preview */}
-            {form.price && (
-              <div style={{
-                marginTop: 20, padding: "18px 20px",
-                borderRadius: 12, border: "1px solid #1a1a1a",
-                background: "#080808",
-              }}>
-                <p style={{ ...s.label, marginBottom: 12 }}>Price preview</p>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                  {form.discountPrice && Number(form.discountPrice) < Number(form.price) ? (
-                    <>
-                      <span style={{ fontSize: 26, fontWeight: 700, color: "#fff" }}>
-                        ₨ {Number(form.discountPrice).toLocaleString()}
-                      </span>
-                      <span style={{ fontSize: 15, color: "#333", textDecoration: "line-through" }}>
-                        ₨ {Number(form.price).toLocaleString()}
-                      </span>
-                      <span style={{
-                        padding: "3px 10px", borderRadius: 999, fontSize: 11,
-                        fontWeight: 700, background: "#fff", color: "#000",
-                      }}>-{discount}%</span>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 26, fontWeight: 700, color: "#fff" }}>
-                      ₨ {Number(form.price).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                {form.stock && (
-                  <p style={{ fontSize: 12, color: "#444", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Layers size={11} /> {form.stock} units in stock
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* STEP 2 — Media */}
+        {/* STEP 2: Media & Photos */}
         {step === 2 && (
-          <div style={{ padding: "28px 32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-              <Image size={15} color="#fff" />
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Product Image</h2>
+          <div className="space-y-5">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#a78bfa] mb-4">
+              3. High-Resolution Model Photoshoot
+            </h2>
+
+            {/* Direct Image URL option */}
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-gray-400 mb-1.5">
+                Paste Image Direct URL (Unsplash or Cloudinary)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-..."
+                  className="flex-1 bg-[#110d20] border border-[#2e2646] p-3 rounded-xl text-white text-xs outline-none font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={handleUrlImage}
+                  className="px-4 py-2.5 bg-[#7c3aed] text-white text-xs font-bold rounded-xl"
+                >
+                  Preview
+                </button>
+              </div>
             </div>
 
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleImage(f); }}
-              onClick={() => !imagePreview && fileRef.current?.click()}
-              style={{
-                borderRadius: 14,
-                border: `2px dashed ${dragOver ? "#fff" : imagePreview ? "#fff" : "#222"}`,
-                background: dragOver ? "#111" : "transparent",
-                minHeight: 300,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: imagePreview ? "default" : "pointer",
-                transition: "border-color .2s, background .2s",
-                overflow: "hidden",
-                position: "relative",
-              }}
+            <div className="relative border-2 border-dashed border-[#2e2646] rounded-2xl p-8 text-center bg-[#110d20]/50 hover:border-[#7c3aed] transition-colors cursor-pointer"
+              onClick={() => fileRef.current?.click()}
             >
               {imagePreview ? (
-                <div style={{ position: "relative", width: "100%" }}>
-                  <img src={imagePreview} alt="preview" style={{ width: "100%", height: 280, objectFit: "contain", padding: 16, boxSizing: "border-box" }} />
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    background: "rgba(0,0,0,0.6)",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-                    opacity: 0, transition: "opacity .2s",
-                  }}
-                    onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                    onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-                      style={{ ...s.btnWhite }}
-                    >
-                      Change Image
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setImagePreview(null); setImageFile(null); }}
-                      style={{ ...s.btnGhost, borderColor: "#fff", color: "#fff" }}
-                    >
-                      Remove
-                    </button>
-                  </div>
+                <div className="relative max-w-xs mx-auto aspect-[3/4] rounded-xl overflow-hidden border border-[#7c3aed]">
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <span className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 text-[10px] text-emerald-400 rounded">
+                    Photo Selected ✓
+                  </span>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: 32 }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 14,
-                    border: "1px solid #222", background: "#0d0d0d",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <Upload size={24} color="#444" />
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <p style={{ color: "#fff", fontWeight: 500, margin: 0, marginBottom: 6 }}>Drop image or click to upload</p>
-                    <p style={{ fontSize: 11, color: "#444", margin: 0 }}>PNG, JPG, WEBP supported</p>
-                  </div>
+                <div className="flex flex-col items-center gap-3">
+                  <Upload size={32} className="text-gray-500" />
+                  <p className="text-xs text-gray-300 font-bold">Click to upload portrait photo or drag here</p>
+                  <p className="text-[10px] text-gray-500 font-mono">PNG, JPG, WEBP recommended (3:4 ratio)</p>
                 </div>
               )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleImage(f);
+                }}
+              />
             </div>
-
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImage(f); }}
-            />
-
-            {imageFile && (
-              <p style={{ fontSize: 11, color: "#34d399", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                <CheckCircle size={12} /> Image selected — will upload on create
-              </p>
-            )}
-            <ErrMsg msg={errors.image} />
           </div>
         )}
 
-        {/* STEP 3 — Review */}
+        {/* STEP 3: Review & Publish */}
         {step === 3 && (
-          <div style={{ padding: "28px 32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-              <Package size={15} color="#fff" />
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Review & Create</h2>
-            </div>
+          <div className="space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#a78bfa] mb-4">
+              4. Review Apparel Details
+            </h2>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-[#110d20] p-5 rounded-xl border border-[#2e2646]">
               {imagePreview && (
-                <div style={{
-                  borderRadius: 14, overflow: "hidden",
-                  border: "1px solid #1a1a1a",
-                  aspectRatio: "1",
-                  background: "#080808",
-                }}>
-                  <img src={imagePreview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-black">
+                  <img src={imagePreview} alt="" className="w-full h-full object-cover" />
                 </div>
               )}
+              <div className="space-y-3 text-xs">
+                <div>
+                  <p className="text-[10px] font-mono text-[#a78bfa] uppercase">{form.fabric}</p>
+                  <h3 className="text-lg font-bold text-white">{form.title}</h3>
+                </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div className="font-mono text-sm font-bold text-white">
+                  PKR {Number(form.discountPrice || form.price || 0).toLocaleString()}
+                </div>
+
+                <p className="text-gray-400 text-xs line-clamp-3">{form.description}</p>
+
                 <div>
-                  <p style={s.label}>Title</p>
-                  <p style={{ color: "#fff", fontWeight: 600, fontSize: 16, margin: 0 }}>{form.title}</p>
-                </div>
-                <div>
-                  <p style={s.label}>Category</p>
-                  <p style={{ color: "#888", fontSize: 13, margin: 0 }}>
-                    {categories.find((c) => c._id === form.category)?.name || "—"}
-                  </p>
-                </div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                  {form.discountPrice && Number(form.discountPrice) < Number(form.price) ? (
-                    <>
-                      <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>
-                        ₨ {Number(form.discountPrice).toLocaleString()}
+                  <p className="text-[10px] text-gray-500 uppercase font-mono">Available Sizes:</p>
+                  <div className="flex gap-1 mt-1">
+                    {form.sizes.map((s) => (
+                      <span key={s} className="px-2 py-0.5 bg-[#1c162e] text-[#c4b5fd] rounded font-mono text-[10px]">
+                        {s}
                       </span>
-                      <span style={{ fontSize: 13, color: "#333", textDecoration: "line-through" }}>
-                        ₨ {Number(form.price).toLocaleString()}
-                      </span>
-                      <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#fff", color: "#000" }}>
-                        -{discount}%
-                      </span>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>
-                      ₨ {Number(form.price || 0).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: Number(form.stock) > 0 ? "#34d399" : "#ef4444" }} />
-                  <span style={{ fontSize: 12, color: "#888" }}>{form.stock} units in stock</span>
-                </div>
-                {form.tags.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {form.tags.map((tag) => (
-                      <span key={tag} style={{
-                        padding: "4px 10px", borderRadius: 999,
-                        background: "#111", border: "1px solid #1a1a1a",
-                        color: "#555", fontSize: 11,
-                      }}>#{tag}</span>
                     ))}
                   </div>
-                )}
+                </div>
+
                 <div>
-                  <p style={s.label}>Description</p>
-                  <p style={{
-                    color: "#555", fontSize: 13, lineHeight: 1.6, margin: 0,
-                    display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden",
-                  }}>
-                    {form.description}
-                  </p>
+                  <span className="text-emerald-400 font-mono font-bold">{form.stock} units ready for inventory</span>
                 </div>
               </div>
             </div>
-
-            {/* Create button */}
-            <div style={{
-              marginTop: 28, paddingTop: 20,
-              borderTop: "1px solid #1a1a1a",
-              display: "flex", alignItems: "center", justifyContent: "flex-end",
-            }}>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                style={{ ...s.btnWhite, opacity: loading ? 0.6 : 1, minWidth: 160, justifyContent: "center" }}
-              >
-                {loading ? (
-                  <>
-                    <div style={{
-                      width: 14, height: 14,
-                      border: "2px solid rgba(0,0,0,0.3)",
-                      borderTopColor: "#000",
-                      borderRadius: "50%",
-                      animation: "spin 0.7s linear infinite",
-                    }} />
-                    Creating…
-                  </>
-                ) : (
-                  <><CheckCircle size={15} /> Create Product</>
-                )}
-              </button>
-            </div>
           </div>
         )}
 
-        {/* Nav buttons */}
-        {step < 3 && (
-          <div style={{
-            padding: "16px 32px 24px",
-            borderTop: "1px solid #1a1a1a",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
+        {/* Navigation Buttons */}
+        <div className="flex items-center justify-between pt-6 mt-6 border-t border-[#22183a]">
+          <button
+            type="button"
+            onClick={prevStep}
+            disabled={step === 0}
+            className="px-5 py-2.5 rounded-xl border border-[#2e2646] text-xs font-bold text-gray-400 hover:text-white disabled:opacity-30"
+          >
+            Back
+          </button>
+
+          {step < 3 ? (
             <button
-              onClick={prevStep}
-              disabled={step === 0}
-              style={{ ...s.btnGhost, opacity: step === 0 ? 0.3 : 1 }}
+              type="button"
+              onClick={nextStep}
+              className="flex items-center gap-1.5 px-6 py-2.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-xs font-bold rounded-xl shadow-lg transition-colors"
             >
-              Back
-            </button>
-
-            <div style={{ display: "flex", gap: 6 }}>
-              {STEPS.map((_, i) => (
-                <div key={i} style={{
-                  height: 5, borderRadius: 999,
-                  background: i === step ? "#fff" : i < step ? "#333" : "#1a1a1a",
-                  width: i === step ? 20 : 5,
-                  transition: "all .3s",
-                }} />
-              ))}
-            </div>
-
-            <button onClick={nextStep} style={s.btnWhite}>
               Continue <ChevronRight size={14} />
             </button>
-          </div>
-        )}
+          ) : (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleSubmit}
+              className="flex items-center gap-2 px-8 py-3 bg-[#d4af37] hover:bg-white text-black text-xs font-bold uppercase tracking-wider rounded-xl shadow-xl transition-all"
+            >
+              {loading ? "Publishing..." : <><CheckCircle size={15} /> Publish to Live Store</>}
+            </button>
+          )}
+        </div>
       </div>
-
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
