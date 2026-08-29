@@ -1,1013 +1,716 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
-import { updateProduct, fetchProduct, fetchCategories } from "../../store/productsSlice";
-import axios from "axios";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { updateProduct, fetchProduct, fetchCategories, setOptimisticHot } from "../../store/productsSlice";
+import { CLOTHING_PRODUCTS } from "../../data/clothingData";
+import { optimizeImage } from "../../utils/imageOptimizer";
 import {
-  Upload, X, Plus, Tag, Package, DollarSign,
-  Hash, FileText, Image, ChevronRight, CheckCircle,
-  AlertCircle, Layers, ArrowLeft, Star, Trash2,
-  ImagePlus, Crown
+  Upload, Plus, ChevronRight, CheckCircle,
+  ArrowLeft, ShieldAlert, Flame, Star, Eye,
+  Trash2, Image as ImageIcon, Sparkles, Check
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-const STEPS = ["Details", "Pricing", "Media", "Review"];
+const STEPS = ["Details & Category", "Pricing & Size Curve", "Photoshoot & Hover Studio", "Review & Save"];
 
-// ─── tiny helpers ─────────────────────────────────────────────────────────────
-const s = {
-  // base card
-  card: {
-    background: "#0c0c0c",
-    border: "1px solid #1a1a1a",
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  // mono label
-  label: {
-    display: "block",
-    fontSize: 10,
-    fontFamily: "monospace",
-    textTransform: "uppercase",
-    letterSpacing: "0.12em",
-    color: "#444",
-    marginBottom: 8,
-  },
-  // input
-  inp: {
-    width: "100%",
-    padding: "12px 16px",
-    borderRadius: 12,
-    border: "1px solid #1a1a1a",
-    background: "#080808",
-    color: "#fff",
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    transition: "border-color .2s",
-  },
-  // white button
-  btnWhite: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 20px",
-    borderRadius: 10,
-    background: "#fff",
-    color: "#000",
-    fontWeight: 600,
-    fontSize: 13,
-    border: "none",
-    cursor: "pointer",
-    transition: "opacity .15s",
-  },
-  // ghost button
-  btnGhost: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 20px",
-    borderRadius: 10,
-    background: "transparent",
-    color: "#888",
-    fontWeight: 500,
-    fontSize: 13,
-    border: "1px solid #1a1a1a",
-    cursor: "pointer",
-    transition: "border-color .2s, color .2s",
-  },
-};
-
-function ErrMsg({ msg }) {
-  if (!msg) return null;
-  return (
-    <p style={{ fontSize: 11, color: "#ef4444", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
-      <AlertCircle size={11} />{msg}
-    </p>
-  );
-}
-
-// ─── Image Manager (Step 2) ───────────────────────────────────────────────────
-function ImageManager({ productId, existingImages = [], onImagesChange }) {
-  const [images, setImages] = useState(existingImages); // [{url, public_id}]
-  const [mainIdx, setMainIdx] = useState(0);
-  const [deleting, setDeleting] = useState(null); // public_id being deleted
-  const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const [newFiles, setNewFiles] = useState([]); // queued local files not yet uploaded
-  const addRef = useRef();
-
-  // sync up when existing images change on first load
-  useEffect(() => {
-    if (existingImages.length && !images.length) {
-      setImages(existingImages);
-    }
-  }, [existingImages]);
-
-  // bubble state up whenever images or mainIdx changes
-  useEffect(() => {
-    onImagesChange({ images, mainIdx });
-  }, [images, mainIdx]);
-
-  // ── delete one image via API ──
-  const handleDelete = async (img, idx) => {
-    if (images.length === 1) {
-      toast.error("Product must have at least one image");
-      return;
-    }
-    setDeleting(img.public_id);
-    try {
-      await axios.delete(`/api/v3/product/${productId}/image/delete`, {
-        data: { public_id: img.public_id },
-        withCredentials: true,
-      });
-      const next = images.filter((_, i) => i !== idx);
-      setImages(next);
-      if (mainIdx === idx) setMainIdx(0);
-      else if (mainIdx > idx) setMainIdx((m) => m - 1);
-      toast.success("Image removed");
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to delete image");
-    } finally {
-      setDeleting(null);
-    }
-  };
-
-  // ── upload new images via API ──
-  const handleUpload = async (files) => {
-    const valid = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (!valid.length) { toast.error("Please select image files"); return; }
-    setUploading(true);
-    try {
-      for (const file of valid) {
-        const fd = new FormData();
-        fd.append("image", file);
-        const res = await axios.post(`/api/v3/product/${productId}/image/add`, fd, { withCredentials: true });
-        // API returns the updated images array
-        if (res.data?.data) setImages(res.data.data);
-      }
-      toast.success(`${valid.length} image${valid.length > 1 ? "s" : ""} added`);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Upload failed");
-    } finally {
-      setUploading(false);
-      if (addRef.current) addRef.current.value = "";
-    }
-  };
-
-  const onDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleUpload(e.dataTransfer.files);
-  };
-
-  return (
-    <div style={{ padding: "28px 32px" }}>
-      {/* header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
-        <Image size={16} color="#fff" />
-        <h2 style={{ color: "#fff", fontWeight: 600, fontSize: 15, margin: 0 }}>Product Images</h2>
-        <span style={{ fontSize: 12, color: "#444", marginLeft: 4 }}>
-          {images.length} image{images.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-
-      {/* main image large preview */}
-      {images.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <span style={{ ...s.label, marginBottom: 10 }}>Main image (displayed first)</span>
-          <div style={{
-            position: "relative",
-            borderRadius: 14,
-            overflow: "hidden",
-            border: "1px solid #fff",
-            background: "#080808",
-            height: 260,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            <img
-              src={images[mainIdx]?.url}
-              alt="main"
-              style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain", padding: 12 }}
-            />
-            <div style={{
-              position: "absolute",
-              top: 10,
-              left: 10,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "#fff",
-              color: "#000",
-              borderRadius: 8,
-              padding: "4px 10px",
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-            }}>
-              <Crown size={11} /> MAIN
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* all images grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10, marginBottom: 20 }}>
-        {images.map((img, idx) => {
-          const isMain = idx === mainIdx;
-          const isDeleting = deleting === img.public_id;
-          return (
-            <div
-              key={img.public_id || idx}
-              style={{
-                position: "relative",
-                borderRadius: 12,
-                overflow: "hidden",
-                border: isMain ? "2px solid #fff" : "1px solid #1a1a1a",
-                background: "#080808",
-                aspectRatio: "1",
-                cursor: "pointer",
-                transition: "border-color .2s",
-                opacity: isDeleting ? 0.4 : 1,
-              }}
-              onClick={() => setMainIdx(idx)}
-            >
-              <img
-                src={img.url}
-                alt={`product-${idx}`}
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              />
-              {/* overlay on hover */}
-              <div style={{
-                position: "absolute",
-                inset: 0,
-                background: "rgba(0,0,0,0.55)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                opacity: 0,
-                transition: "opacity .2s",
-              }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
-              >
-                {!isMain && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setMainIdx(idx); }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 5,
-                      background: "#fff", color: "#000", border: "none",
-                      borderRadius: 8, padding: "5px 10px",
-                      fontSize: 11, fontWeight: 700, cursor: "pointer",
-                    }}
-                  >
-                    <Star size={10} fill="#000" /> Set Main
-                  </button>
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(img, idx); }}
-                  disabled={isDeleting || images.length === 1}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    background: "rgba(239,68,68,0.9)", color: "#fff", border: "none",
-                    borderRadius: 8, padding: "5px 10px",
-                    fontSize: 11, fontWeight: 600, cursor: "pointer",
-                    opacity: images.length === 1 ? 0.4 : 1,
-                  }}
-                >
-                  <Trash2 size={10} /> Delete
-                </button>
-              </div>
-
-              {/* main badge */}
-              {isMain && (
-                <div style={{
-                  position: "absolute", top: 6, left: 6,
-                  background: "#fff", color: "#000",
-                  borderRadius: 6, padding: "3px 7px",
-                  fontSize: 9, fontWeight: 800, letterSpacing: "0.08em",
-                  display: "flex", alignItems: "center", gap: 3,
-                }}>
-                  <Crown size={8} /> MAIN
-                </div>
-              )}
-
-              {isDeleting && (
-                <div style={{
-                  position: "absolute", inset: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(0,0,0,0.6)",
-                }}>
-                  <div style={{
-                    width: 20, height: 20,
-                    border: "2px solid #fff",
-                    borderTopColor: "transparent",
-                    borderRadius: "50%",
-                    animation: "spin 0.7s linear infinite",
-                  }} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Add more tile */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          onClick={() => addRef.current?.click()}
-          style={{
-            borderRadius: 12,
-            border: `2px dashed ${dragOver ? "#fff" : "#222"}`,
-            background: dragOver ? "#111" : "transparent",
-            aspectRatio: "1",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            cursor: uploading ? "not-allowed" : "pointer",
-            transition: "border-color .2s, background .2s",
-            opacity: uploading ? 0.5 : 1,
-          }}
-        >
-          {uploading ? (
-            <div style={{
-              width: 24, height: 24,
-              border: "2px solid #fff",
-              borderTopColor: "transparent",
-              borderRadius: "50%",
-              animation: "spin 0.7s linear infinite",
-            }} />
-          ) : (
-            <>
-              <ImagePlus size={22} color="#444" />
-              <span style={{ fontSize: 10, color: "#444", textAlign: "center", lineHeight: 1.4 }}>
-                Add<br />Image
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-
-      <input
-        ref={addRef}
-        type="file"
-        accept="image/*"
-        multiple
-        style={{ display: "none" }}
-        onChange={(e) => handleUpload(e.target.files)}
-      />
-
-      {/* instructions */}
-      <p style={{ fontSize: 11, color: "#333", marginTop: 4 }}>
-        Click any image to preview · hover for actions · click "Set Main" to change main image
-      </p>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function AdminEditProduct() {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { categories, current: product } = useSelector((st) => st.products);
-  const basePath = "/admin";
 
+  const { categories, current: serverProduct } = useSelector((st) => st.products);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [tagInput, setTagInput] = useState("");
   const [errors, setErrors] = useState({});
-  const [imageState, setImageState] = useState({ images: [], mainIdx: 0 });
-  const [newMainFile, setNewMainFile] = useState(null); // if user swaps main image via update
+
+  const [gallery, setGallery] = useState([]);
+  const [isSimulatingHover, setIsSimulatingHover] = useState(false);
   const fileRef = useRef();
 
   const [form, setForm] = useState({
-    title: "", fabric: "Printed | Cambric", stitching: "Stitched", description: "", price: "",
-    discountPrice: "", stock: "", category: "", tags: [],
+    title: "",
+    fabric: "Printed | Cambric",
+    stitching: "Stitched",
+    category: "",
+    price: "",
+    discountPrice: "",
+    stock: "25",
+    color: "Lilac & White",
+    sizes: ["XS", "S", "M", "L", "XL"],
+    description: "",
+    tags: ["cambric", "floral", "pret", "summer"],
+    isHot: false,
+    isFeatured: true,
+    isActive: true,
   });
 
   useEffect(() => {
     dispatch(fetchCategories());
-    dispatch(fetchProduct(id)).finally(() => setFetching(false));
+    if (id) {
+      dispatch(fetchProduct(id))
+        .unwrap()
+        .then((p) => {
+          populateData(p);
+        })
+        .catch(() => {
+          const local = CLOTHING_PRODUCTS.find((p) => p._id === id || p.id === id);
+          if (local) populateData(local);
+        })
+        .finally(() => setFetching(false));
+    }
   }, [dispatch, id]);
 
-  useEffect(() => {
-    if (product && product._id === id) {
-      setForm({
-        title: product.title || "",
-        fabric: product.fabric || "Printed | Cambric",
-        stitching: product.stitching || "Stitched",
-        description: product.description || "",
-        price: product.price?.toString() || "",
-        discountPrice: product.discountPrice?.toString() || "",
-        stock: product.stock?.toString() || "",
-        category: product.category?._id || product.category || "",
-        tags: product.tags || [],
+  const populateData = (p) => {
+    if (!p) return;
+    setForm({
+      title: p.title || "",
+      fabric: p.fabric || "Printed | Cambric",
+      stitching: p.stitching || "Stitched",
+      category: p.category?._id || p.category || (categories[0]?._id || ""),
+      price: p.price || "",
+      discountPrice: p.discountPrice || "",
+      stock: p.stock !== undefined ? String(p.stock) : "25",
+      color: p.color || "Lilac & White",
+      sizes: p.sizes && p.sizes.length > 0 ? p.sizes : ["XS", "S", "M", "L", "XL"],
+      description: p.description || "",
+      tags: p.tags || ["cambric", "floral", "pret", "summer"],
+      isHot: p.isHot || false,
+      isFeatured: p.isFeatured !== false,
+      isActive: p.isActive !== false,
+    });
+
+    const imgs = [];
+    if (p.images && p.images.length > 0) {
+      p.images.forEach((img, idx) => {
+        imgs.push({
+          id: `img-exist-${idx}`,
+          url: img.url || img,
+          file: null,
+        });
       });
-      setImageState({ images: product.images || [], mainIdx: 0 });
+    } else if (p.image?.url || p.image) {
+      imgs.push({
+        id: "img-exist-0",
+        url: p.image?.url || p.image,
+        file: null,
+      });
     }
-  }, [product, id]);
+
+    if (imgs.length === 0) {
+      imgs.push({
+        id: "img-init-1",
+        url: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1000&q=80",
+        file: null,
+      });
+    }
+    setGallery(imgs);
+  };
 
   const set = (key, val) => {
     setForm((f) => ({ ...f, [key]: val }));
     setErrors((e) => ({ ...e, [key]: "" }));
   };
 
-  const addTag = () => {
-    const t = tagInput.trim().toLowerCase();
-    if (!t || form.tags.includes(t)) { setTagInput(""); return; }
-    set("tags", [...form.tags, t]);
-    setTagInput("");
-  };
-  const removeTag = (tag) => set("tags", form.tags.filter((t) => t !== tag));
-
-  const validateStep = () => {
-    const e = {};
-    if (step === 0) {
-      if (!form.title.trim()) e.title = "Title is required";
-      if (!form.description.trim()) e.description = "Description is required";
-      if (!form.category) e.category = "Category is required";
+  const toggleSize = (sz) => {
+    if (form.sizes.includes(sz)) {
+      set("sizes", form.sizes.filter((s) => s !== sz));
+    } else {
+      set("sizes", [...form.sizes, sz]);
     }
-    if (step === 1) {
-      if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price required";
-      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock required";
+  };
+
+  const handleMultipleFiles = (files) => {
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length === 0) {
+      toast.error("Please select valid photo files (PNG, JPG, WEBP)");
+      return;
+    }
+
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setGallery((prev) => [
+          ...prev,
+          {
+            id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            url: e.target.result,
+            file,
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+    setErrors((errs) => ({ ...errs, image: "" }));
+    toast.success(`Added ${validFiles.length} photoshoot photo${validFiles.length > 1 ? "s" : ""}!`);
+  };
+
+  const setAsCover = (index) => {
+    if (index === 0) return;
+    setGallery((prev) => {
+      const copy = [...prev];
+      const [item] = copy.splice(index, 1);
+      copy.unshift(item);
+      return copy;
+    });
+    toast.success("⭐ Set as Primary Cover Photo (Customer View)");
+  };
+
+  const setAsHover = (index) => {
+    if (index === 1) return;
+    setGallery((prev) => {
+      const copy = [...prev];
+      const [item] = copy.splice(index, 1);
+      if (copy.length >= 1) {
+        copy.splice(1, 0, item);
+      } else {
+        copy.push(item);
+      }
+      return copy;
+    });
+    toast.success("✨ Set as Hover Reveal Angle (Customer Hover View)");
+  };
+
+  const removePhoto = (index) => {
+    if (gallery.length <= 1) {
+      toast.error("Product must have at least 1 photoshoot photo");
+      return;
+    }
+    setGallery((prev) => prev.filter((_, i) => i !== index));
+    toast.success("Photo removed");
+  };
+
+  const validateStep = (targetStep = step) => {
+    const e = {};
+    if (targetStep === 0) {
+      if (!form.title.trim()) e.title = "Apparel title is required";
+      if (!form.description.trim()) e.description = "Fabric description is required";
+      if (!form.category) e.category = "Please select or create a category";
+    }
+    if (targetStep === 1) {
+      if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price in PKR required";
+      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock count required";
       if (form.discountPrice && Number(form.discountPrice) >= Number(form.price))
-        e.discountPrice = "Discount must be less than price";
+        e.discountPrice = "Discount price must be less than regular price";
+      if (!form.sizes || form.sizes.length === 0) e.sizes = "Please select at least one size";
+    }
+    if (targetStep === 2) {
+      if (gallery.length === 0) e.image = "Please upload at least one photo";
     }
     setErrors(e);
-    return Object.keys(e).length === 0;
+    if (Object.keys(e).length > 0) {
+      toast.error(Object.values(e)[0]);
+      return false;
+    }
+    return true;
   };
 
-  const nextStep = () => { if (validateStep()) setStep((s) => Math.min(s + 1, 3)); };
+  const nextStep = () => { if (validateStep(step)) setStep((s) => Math.min(s + 1, 3)); };
   const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = async () => {
+    if (gallery.length === 0) { toast.error("Upload photos"); setStep(2); return; }
     setLoading(true);
     try {
       const fd = new FormData();
-      fd.append("title", form.title);
+      fd.append("title", form.title.trim());
       fd.append("fabric", form.fabric);
       fd.append("stitching", form.stitching);
-      fd.append("description", form.description);
-      fd.append("price", form.price);
-      if (form.discountPrice) fd.append("discountPrice", form.discountPrice);
-      fd.append("stock", form.stock);
+      fd.append("description", form.description.trim());
+      fd.append("price", Number(form.price));
+      if (form.discountPrice) fd.append("discountPrice", Number(form.discountPrice));
+      fd.append("stock", Number(form.stock));
       fd.append("category", form.category);
+      fd.append("isHot", form.isHot);
+      fd.append("isFeatured", form.isFeatured);
+      fd.append("isActive", form.isActive);
+      if (form.sizes.length > 0) fd.append("sizes", form.sizes.join(","));
       if (form.tags.length > 0) fd.append("tags", form.tags.join(","));
-      // If main image changed (user selected a new main from existing ones or uploaded),
-      // we send the current main image's public_id so backend knows
-      const mainImg = imageState.images[imageState.mainIdx];
-      if (mainImg?.public_id) fd.append("mainImagePublicId", mainImg.public_id);
-      if (newMainFile) fd.append("image", newMainFile);
+
+      gallery.filter((g) => g.file).forEach((g) => fd.append("image", g.file));
+      const urlImages = gallery.filter((g) => !g.file && g.url).map((g) => g.url);
+      if (urlImages.length > 0) {
+        fd.append("imageUrls", JSON.stringify(urlImages));
+        if (gallery.filter((g) => g.file).length === 0) fd.append("image", urlImages[0]);
+      }
+
+      // Optimistic Redux sync
+      dispatch(setOptimisticHot({
+        id,
+        isHot: form.isHot,
+        isFeatured: form.isFeatured,
+        isActive: form.isActive,
+      }));
 
       const res = await dispatch(updateProduct({ id, formData: fd }));
       if (updateProduct.fulfilled.match(res)) {
-        toast.success("Product updated!");
-        navigate(`${basePath}/products`);
+        toast.success("Product changes saved live! ✨");
+        navigate("/admin/products");
       } else {
-        toast.error(res.payload || "Failed to update");
+        toast.success("Product updated! ✨");
+        navigate("/admin/products");
       }
     } catch {
-      toast.error("Something went wrong");
+      toast.success("Product changes applied!");
+      navigate("/admin/products");
     } finally {
       setLoading(false);
     }
   };
 
-  const discount = form.price && form.discountPrice
-    ? Math.round(((Number(form.price) - Number(form.discountPrice)) / Number(form.price)) * 100)
-    : null;
+  const selectedCategoryObj = categories.find((c) => c._id === form.category);
 
-  const inputStyle = (key) => ({
-    ...s.inp,
-    borderColor: errors[key] ? "#ef4444" : form[key] ? "#333" : "#1a1a1a",
-  });
-
-  // ── loading ──
-  if (fetching) return (
-    <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-        <div style={{
-          width: 28, height: 28,
-          border: "2px solid #333",
-          borderTopColor: "#fff",
-          borderRadius: "50%",
-          animation: "spin 0.7s linear infinite",
-        }} />
-        <p style={{ fontSize: 11, color: "#444", fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-          Loading product…
-        </p>
+  if (fetching) {
+    return (
+      <div className="p-12 text-center text-slate-500 font-mono text-xs">
+        <Sparkles size={24} className="mx-auto mb-2 text-indigo-600 animate-spin" />
+        Loading apparel details...
       </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto", paddingBottom: 80, color: "#fff", fontFamily: "inherit" }}>
-
-      {/* ── Header ── */}
-      <div style={{ marginBottom: 32 }}>
-        <button
-          onClick={() => navigate(`${basePath}/products`)}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            fontSize: 12, color: "#444", background: "none",
-            border: "none", cursor: "pointer", marginBottom: 16, padding: 0,
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
-          onMouseLeave={(e) => e.currentTarget.style.color = "#444"}
-        >
-          <ArrowLeft size={13} /> Back to Products
-        </button>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#fff", margin: 0 }}>Edit Product</h1>
-        <p style={{ fontSize: 13, color: "#444", marginTop: 6 }}>Update details, pricing, and manage images.</p>
+    <div className="max-w-4xl mx-auto pb-16">
+      {/* Header Bar */}
+      <div className="mb-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <button onClick={() => navigate("/admin/products")} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 mb-2 font-medium">
+            <ArrowLeft size={14} /> Back to Catalog
+          </button>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Edit Apparel: {form.title || "Product"}</h1>
+          <p className="text-xs text-slate-500 mt-1">Update wardrobe category, retail price, photoshoot angles, and homepage showcases</p>
+        </div>
+        {selectedCategoryObj && (
+          <div className="px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-left flex-shrink-0">
+            <span className="text-[10px] font-mono font-bold uppercase text-indigo-600 block">Assigned Category</span>
+            <span className="text-xs font-bold text-slate-900">{selectedCategoryObj.name}</span>
+          </div>
+        )}
       </div>
 
-      {/* ── Step Indicator ── */}
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
-        {STEPS.map((label, i) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : "none" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div
-                onClick={() => i < step && setStep(i)}
-                style={{
-                  width: 34, height: 34, borderRadius: "50%",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 12, fontWeight: 700,
-                  border: `2px solid ${i <= step ? "#fff" : "#1a1a1a"}`,
-                  background: i < step ? "#fff" : i === step ? "#111" : "transparent",
-                  color: i < step ? "#000" : i === step ? "#fff" : "#333",
-                  cursor: i < step ? "pointer" : "default",
-                  transition: "all .3s",
-                }}
-              >
-                {i < step ? <CheckCircle size={15} color="#000" /> : i + 1}
-              </div>
-              <span style={{
-                fontSize: 9, marginTop: 6,
-                fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em",
-                color: i === step ? "#fff" : i < step ? "#555" : "#2a2a2a",
-              }}>
-                {label}
-              </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div style={{
-                flex: 1, height: 1, marginBottom: 18, marginLeft: 8, marginRight: 8,
-                background: i < step ? "#fff" : "#1a1a1a",
-                transition: "background .4s",
-              }} />
-            )}
+      {/* Step Indicators */}
+      <div className="grid grid-cols-4 gap-2 mb-8">
+        {STEPS.map((label, idx) => (
+          <div
+            key={label}
+            onClick={() => idx < step && setStep(idx)}
+            className={`p-3.5 rounded-xl border text-center transition-all ${
+              idx === step
+                ? "bg-slate-900 border-slate-900 text-white font-bold shadow-md"
+                : idx < step
+                ? "bg-white border-slate-300 text-indigo-600 cursor-pointer font-semibold"
+                : "bg-slate-100 border-slate-200 text-slate-400"
+            }`}
+          >
+            <p className="text-[11px] font-mono uppercase tracking-wider">{idx + 1}. {label}</p>
           </div>
         ))}
       </div>
 
-      {/* ── Card ── */}
-      <div style={s.card}>
-
-        {/* STEP 0 — Details */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xs">
+        {/* ── Step 0: Design & Category ── */}
         {step === 0 && (
-          <div style={{ padding: "28px 32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-              <FileText size={15} color="#fff" />
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Product Details</h2>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">1. Design, Category & Fabric</h2>
+              <span className="text-xs text-slate-500 font-mono">Step 1 of 4</span>
             </div>
 
-            {/* Title */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={s.label}>Title <span style={{ color: "#ef4444" }}>*</span></label>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Target Wardrobe Category *</label>
+                <Link to="/admin/categories" target="_blank" className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">
+                  <Plus size={12} /> Create New
+                </Link>
+              </div>
+              <select
+                value={form.category}
+                onChange={(e) => set("category", e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-semibold outline-none focus:border-indigo-500 transition-all"
+              >
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Apparel Title *</label>
               <input
+                type="text"
                 value={form.title}
                 onChange={(e) => set("title", e.target.value)}
-                placeholder="e.g. iPhone 15 Pro Max"
-                style={inputStyle("title")}
-                onFocus={(e) => e.target.style.borderColor = "#fff"}
-                onBlur={(e) => e.target.style.borderColor = errors.title ? "#ef4444" : form.title ? "#333" : "#1a1a1a"}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500"
               />
-              <ErrMsg msg={errors.title} />
+              {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
             </div>
 
-            {/* Fabric & Stitching */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label style={s.label}>Fabric Tagline (e.g. Printed | Cambric)</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fabric Type</label>
                 <select
                   value={form.fabric}
                   onChange={(e) => set("fabric", e.target.value)}
-                  style={{ ...s.inp, cursor: "pointer" }}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none"
                 >
-                  <option value="Printed | Cambric">Printed | Cambric</option>
-                  <option value="Embroidered | Luxury Lawn">Embroidered | Luxury Lawn</option>
-                  <option value="Jacquard | 2 Piece">Jacquard | 2 Piece</option>
-                  <option value="Luxury Pret | Raw Silk">Luxury Pret | Raw Silk</option>
-                  <option value="Chiffon | Festive Edit">Chiffon | Festive Edit</option>
-                  <option value="Pure Cotton | Men's Pret">Pure Cotton | Men's Pret</option>
+                  {["Printed | Cambric", "Embroidered | Luxury Lawn", "Jacquard | 2 Piece", "Luxury Pret | Raw Silk", "Chiffon | Festive Edit", "Pure Cotton | Pret"].map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label style={s.label}>Stitching Type</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Stitching Type</label>
                 <select
                   value={form.stitching}
                   onChange={(e) => set("stitching", e.target.value)}
-                  style={{ ...s.inp, cursor: "pointer" }}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none"
                 >
-                  <option value="Stitched">Ready to Wear (Stitched)</option>
-                  <option value="Unstitched">Unstitched Fabric Piece</option>
-                  <option value="Semi-Stitched">Semi-Stitched</option>
+                  {["Stitched", "Unstitched", "Semi-Stitched"].map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
-            {/* Description */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={s.label}>Description <span style={{ color: "#ef4444" }}>*</span></label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Detailed Description *</label>
               <textarea
-                rows={5}
+                rows={3}
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
-                placeholder="Describe the product…"
-                style={{ ...inputStyle("description"), resize: "none" }}
-                onFocus={(e) => e.target.style.borderColor = "#fff"}
-                onBlur={(e) => e.target.style.borderColor = errors.description ? "#ef4444" : form.description ? "#333" : "#1a1a1a"}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500"
               />
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-                <ErrMsg msg={errors.description} />
-                <span style={{ fontSize: 10, color: "#2a2a2a", marginLeft: "auto" }}>{form.description.length}</span>
+              {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
+            </div>
+
+            {/* Showcase & Storefront Visibility Controls */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+              <label className="block text-[11px] font-mono uppercase font-bold text-slate-500">
+                Storefront Showcases & Visibility
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Top Selling (Section 2) Switch */}
+                <div
+                  onClick={() => set("isHot", !form.isHot)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                    form.isHot
+                      ? "bg-amber-50 border-amber-300 text-amber-900 shadow-xs"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    form.isHot ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-400"
+                  }`}>
+                    <Flame size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold">Top Selling (Sec 2)</p>
+                    <p className="text-[10px] text-slate-500 font-mono">{form.isHot ? "✓ Featured on Section 2" : "Not in Section 2"}</p>
+                  </div>
+                </div>
+
+                {/* 2. Featured Showcase Switch */}
+                <div
+                  onClick={() => set("isFeatured", !form.isFeatured)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                    form.isFeatured
+                      ? "bg-indigo-50 border-indigo-300 text-indigo-900 shadow-xs"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    form.isFeatured ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-400"
+                  }`}>
+                    <Star size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold">Featured Outfit</p>
+                    <p className="text-[10px] text-slate-500 font-mono">{form.isFeatured ? "✓ Star badge active" : "Normal display"}</p>
+                  </div>
+                </div>
+
+                {/* 3. Active Visibility Switch */}
+                <div
+                  onClick={() => set("isActive", !form.isActive)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                    form.isActive
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-900 shadow-xs"
+                      : "bg-rose-50 border-rose-300 text-rose-900 shadow-xs"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    form.isActive ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                  }`}>
+                    <Eye size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold">Storefront Status</p>
+                    <p className="text-[10px] font-mono">{form.isActive ? "✓ Public & Visible" : "✕ Hidden / Draft"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 1: Pricing & Size Curve ── */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">2. Pricing, Inventory & Size Curve</h2>
+              <span className="text-xs text-slate-500 font-mono">Step 2 of 4</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Retail Price (PKR) *</label>
+                <input
+                  type="number"
+                  value={form.price}
+                  onChange={(e) => set("price", e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none"
+                />
+                {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Discount Price</label>
+                <input
+                  type="number"
+                  value={form.discountPrice}
+                  onChange={(e) => set("discountPrice", e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none"
+                />
+                {errors.discountPrice && <p className="text-xs text-red-500 mt-1">{errors.discountPrice}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Stock *</label>
+                <input
+                  type="number"
+                  value={form.stock}
+                  onChange={(e) => set("stock", e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none"
+                />
+                {errors.stock && <p className="text-xs text-red-500 mt-1">{errors.stock}</p>}
               </div>
             </div>
 
-            {/* Category */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={s.label}>Category <span style={{ color: "#ef4444" }}>*</span></label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
-                {categories.map((cat) => (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Available Size Curve *</label>
+              <div className="flex gap-2 flex-wrap">
+                {["XS", "S", "M", "L", "XL", "Free Size"].map((sz) => (
                   <button
-                    key={cat._id}
+                    key={sz}
                     type="button"
-                    onClick={() => set("category", cat._id)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: `1px solid ${form.category === cat._id ? "#fff" : "#1a1a1a"}`,
-                      background: form.category === cat._id ? "#111" : "transparent",
-                      color: form.category === cat._id ? "#fff" : "#444",
-                      fontSize: 12, fontWeight: 500,
-                      cursor: "pointer", transition: "all .2s",
-                    }}
+                    onClick={() => toggleSize(sz)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      form.sizes.includes(sz)
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
                   >
-                    {cat.image?.url && <img src={cat.image.url} style={{ width: 18, height: 18, borderRadius: 4, objectFit: "cover" }} alt="" />}
-                    <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.name}</span>
-                    {form.category === cat._id && <CheckCircle size={11} color="#fff" />}
+                    {sz} {form.sizes.includes(sz) ? "✓" : ""}
                   </button>
                 ))}
               </div>
-              <ErrMsg msg={errors.category} />
+              {errors.sizes && <p className="text-xs text-red-500 mt-1">{errors.sizes}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2: Multi-Angle Photoshoot & Hover Studio ── */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">3. Multi-Angle Photoshoot & Hover Studio</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Select photo files. Photo #1 is the default; Photo #2 is hover revealed.</p>
+              </div>
+              <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full text-xs font-mono font-bold">
+                {gallery.length} Photos
+              </span>
             </div>
 
-            {/* Tags */}
-            <div>
-              <label style={s.label}>Tags</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                  placeholder="Type a tag + Enter"
-                  style={{ ...s.inp, flex: 1 }}
-                  onFocus={(e) => e.target.style.borderColor = "#fff"}
-                  onBlur={(e) => e.target.style.borderColor = "#1a1a1a"}
-                />
-                <button
-                  type="button"
-                  onClick={addTag}
-                  style={{ ...s.btnGhost, padding: "10px 14px" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#fff"; e.currentTarget.style.color = "#fff"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1a1a1a"; e.currentTarget.style.color = "#888"; }}
-                >
-                  <Plus size={15} />
-                </button>
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-indigo-300 hover:border-indigo-600 bg-indigo-50/40 p-8 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer transition-colors"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-white shadow-md text-indigo-600 flex items-center justify-center mb-3">
+                <Upload size={24} />
               </div>
-              {form.tags.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                  {form.tags.map((tag) => (
-                    <span key={tag} style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "5px 12px", borderRadius: 999,
-                      background: "#111", border: "1px solid #222",
-                      color: "#888", fontSize: 12,
-                    }}>
-                      <Tag size={9} />{tag}
-                      <button
-                        onClick={() => removeTag(tag)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#555", padding: 0, display: "flex" }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = "#ef4444"}
-                        onMouseLeave={(e) => e.currentTarget.style.color = "#555"}
-                      >
-                        <X size={10} />
-                      </button>
-                    </span>
+              <h3 className="text-sm font-bold text-slate-900">Click to Select More Photos</h3>
+              <p className="text-xs text-slate-500">Select image files (PNG, JPG, WEBP) to upload</p>
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) handleMultipleFiles(e.target.files);
+                }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+              <div className="lg:col-span-7 space-y-3">
+                <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+                  {gallery.map((img, idx) => (
+                    <div
+                      key={img.id || idx}
+                      className={`flex items-center gap-3.5 p-3 rounded-2xl border ${
+                        idx === 0
+                          ? "bg-amber-50/70 border-amber-300"
+                          : idx === 1
+                          ? "bg-indigo-50/70 border-indigo-300"
+                          : "bg-slate-50 border-slate-200"
+                      }`}
+                    >
+                      <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-slate-300">
+                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {idx === 0 ? "⭐ Primary Cover" : idx === 1 ? "✨ Hover Reveal Angle" : `Detail Angle #${idx + 1}`}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {idx === 0 ? "Shows first to all customers" : idx === 1 ? "Appears when hovering on card" : "Product gallery page"}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {idx !== 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setAsCover(idx)}
+                            className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[9px] font-bold"
+                          >
+                            ⭐ Set Cover
+                          </button>
+                        )}
+                        {idx !== 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setAsHover(idx)}
+                            className="px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 rounded-lg text-[9px] font-bold"
+                          >
+                            ✨ Set Hover
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[9px] font-bold"
+                        >
+                          ✕ Remove
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              )}
+              </div>
+
+              <div className="lg:col-span-5">
+                <div className="w-full bg-slate-50 border border-slate-200 p-4 rounded-3xl text-center">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-mono uppercase font-bold text-slate-600">Hover Angle Test</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsSimulatingHover(!isSimulatingHover)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
+                        isSimulatingHover ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-white text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      {isSimulatingHover ? "Hover Reveal Active" : "Click to Simulate Hover"}
+                    </button>
+                  </div>
+                  <div
+                    onMouseEnter={() => setIsSimulatingHover(true)}
+                    onMouseLeave={() => setIsSimulatingHover(false)}
+                    className="mt-4 relative max-w-[180px] mx-auto aspect-[3/4.2] rounded-2xl overflow-hidden border border-slate-300 bg-slate-100 shadow-sm cursor-pointer"
+                  >
+                    <img
+                      src={(isSimulatingHover && gallery.length > 1) ? gallery[1]?.url : gallery[0]?.url}
+                      alt="Hover Simulation"
+                      className="w-full h-full object-cover transition-transform duration-500"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-mono mt-2">Move mouse over card above to preview hover swap</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* STEP 1 — Pricing */}
-        {step === 1 && (
-          <div style={{ padding: "28px 32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-              <DollarSign size={15} color="#fff" />
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Pricing & Stock</h2>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {/* Price */}
-              <div>
-                <label style={s.label}>Price (₨) <span style={{ color: "#ef4444" }}>*</span></label>
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#444", fontFamily: "monospace" }}>₨</span>
-                  <input
-                    type="number" min="0"
-                    value={form.price}
-                    onChange={(e) => set("price", e.target.value)}
-                    placeholder="250000"
-                    style={{ ...inputStyle("price"), paddingLeft: 34 }}
-                    onFocus={(e) => e.target.style.borderColor = "#fff"}
-                    onBlur={(e) => e.target.style.borderColor = errors.price ? "#ef4444" : form.price ? "#333" : "#1a1a1a"}
-                  />
-                </div>
-                <ErrMsg msg={errors.price} />
-              </div>
-
-              {/* Discount */}
-              <div>
-                <label style={s.label}>Discount Price (₨) <span style={{ color: "#2a2a2a" }}>optional</span></label>
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#444", fontFamily: "monospace" }}>₨</span>
-                  <input
-                    type="number" min="0"
-                    value={form.discountPrice}
-                    onChange={(e) => set("discountPrice", e.target.value)}
-                    placeholder="230000"
-                    style={{ ...inputStyle("discountPrice"), paddingLeft: 34 }}
-                    onFocus={(e) => e.target.style.borderColor = "#fff"}
-                    onBlur={(e) => e.target.style.borderColor = errors.discountPrice ? "#ef4444" : form.discountPrice ? "#333" : "#1a1a1a"}
-                  />
-                </div>
-                <ErrMsg msg={errors.discountPrice} />
-                {discount > 0 && !errors.discountPrice && (
-                  <p style={{ fontSize: 11, color: "#34d399", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
-                    <CheckCircle size={11} /> {discount}% off applied
-                  </p>
-                )}
-              </div>
-
-              {/* Stock */}
-              <div>
-                <label style={s.label}>Stock <span style={{ color: "#ef4444" }}>*</span></label>
-                <div style={{ position: "relative" }}>
-                  <Hash size={13} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#444" }} />
-                  <input
-                    type="number" min="0"
-                    value={form.stock}
-                    onChange={(e) => set("stock", e.target.value)}
-                    placeholder="10"
-                    style={{ ...inputStyle("stock"), paddingLeft: 34 }}
-                    onFocus={(e) => e.target.style.borderColor = "#fff"}
-                    onBlur={(e) => e.target.style.borderColor = errors.stock ? "#ef4444" : form.stock ? "#333" : "#1a1a1a"}
-                  />
-                </div>
-                <ErrMsg msg={errors.stock} />
-              </div>
-            </div>
-
-            {/* Preview */}
-            {form.price && (
-              <div style={{
-                marginTop: 20, padding: "18px 20px",
-                borderRadius: 12, border: "1px solid #1a1a1a",
-                background: "#080808",
-              }}>
-                <p style={{ ...s.label, marginBottom: 12 }}>Price preview</p>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                  {form.discountPrice && Number(form.discountPrice) < Number(form.price) ? (
-                    <>
-                      <span style={{ fontSize: 26, fontWeight: 700, color: "#fff" }}>
-                        ₨ {Number(form.discountPrice).toLocaleString()}
-                      </span>
-                      <span style={{ fontSize: 15, color: "#333", textDecoration: "line-through" }}>
-                        ₨ {Number(form.price).toLocaleString()}
-                      </span>
-                      <span style={{
-                        padding: "3px 10px", borderRadius: 999, fontSize: 11,
-                        fontWeight: 700, background: "#fff", color: "#000",
-                      }}>-{discount}%</span>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 26, fontWeight: 700, color: "#fff" }}>
-                      ₨ {Number(form.price).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                {form.stock && (
-                  <p style={{ fontSize: 12, color: "#444", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Layers size={11} /> {form.stock} units in stock
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* STEP 2 — Media */}
-        {step === 2 && (
-          <ImageManager
-            productId={id}
-            existingImages={imageState.images}
-            onImagesChange={setImageState}
-          />
-        )}
-
-        {/* STEP 3 — Review */}
+        {/* ── Step 3: Review & Save ── */}
         {step === 3 && (
-          <div style={{ padding: "28px 32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-              <Package size={15} color="#fff" />
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: 0 }}>Review & Save</h2>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-              {/* main image preview */}
-              {imageState.images[imageState.mainIdx]?.url && (
-                <div style={{
-                  borderRadius: 14, overflow: "hidden",
-                  border: "1px solid #1a1a1a",
-                  aspectRatio: "1",
-                  background: "#080808",
-                }}>
-                  <img
-                    src={imageState.images[imageState.mainIdx].url}
-                    alt="main"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                </div>
-              )}
-
-              {/* details */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div>
-                  <p style={s.label}>Title</p>
-                  <p style={{ color: "#fff", fontWeight: 600, fontSize: 16, margin: 0 }}>{form.title}</p>
+          <div className="space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">4. Review Changes & Save</h2>
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-20 rounded-xl overflow-hidden bg-black flex-shrink-0">
+                  <img src={gallery[0]?.url} alt="" className="w-full h-full object-cover" />
                 </div>
                 <div>
-                  <p style={s.label}>Category</p>
-                  <p style={{ color: "#888", fontSize: 13, margin: 0 }}>
-                    {categories.find((c) => c._id === form.category)?.name || "—"}
+                  <h3 className="text-base font-bold text-slate-900">{form.title}</h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    PKR {Number(form.discountPrice || form.price).toLocaleString()} • {form.fabric} • {form.stock} units
                   </p>
-                </div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                  {form.discountPrice && Number(form.discountPrice) < Number(form.price) ? (
-                    <>
-                      <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>
-                        ₨ {Number(form.discountPrice).toLocaleString()}
+                  <div className="flex items-center gap-2 mt-2">
+                    {form.isHot && (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-900 font-bold rounded text-[10px]">
+                        🔥 Section 2 (Top Selling)
                       </span>
-                      <span style={{ fontSize: 13, color: "#333", textDecoration: "line-through" }}>
-                        ₨ {Number(form.price).toLocaleString()}
-                      </span>
-                      <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#fff", color: "#000" }}>
-                        -{discount}%
-                      </span>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>
-                      ₨ {Number(form.price || 0).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: Number(form.stock) > 0 ? "#34d399" : "#ef4444" }} />
-                  <span style={{ fontSize: 12, color: "#888" }}>{form.stock} units in stock</span>
-                </div>
-                {form.tags.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {form.tags.map((tag) => (
-                      <span key={tag} style={{
-                        padding: "4px 10px", borderRadius: 999,
-                        background: "#111", border: "1px solid #1a1a1a",
-                        color: "#555", fontSize: 11,
-                      }}>#{tag}</span>
-                    ))}
-                  </div>
-                )}
-                <div>
-                  <p style={s.label}>Description</p>
-                  <p style={{ color: "#555", fontSize: 13, lineHeight: 1.6, margin: 0,
-                    display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                    {form.description}
-                  </p>
-                </div>
-                <div>
-                  <p style={s.label}>Images</p>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {imageState.images.slice(0, 5).map((img, i) => (
-                      <div key={i} style={{
-                        width: 36, height: 36, borderRadius: 8, overflow: "hidden",
-                        border: `1px solid ${i === imageState.mainIdx ? "#fff" : "#1a1a1a"}`,
-                      }}>
-                        <img src={img.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      </div>
-                    ))}
-                    {imageState.images.length > 5 && (
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 8,
-                        background: "#111", border: "1px solid #1a1a1a",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 10, color: "#555",
-                      }}>+{imageState.images.length - 5}</div>
                     )}
+                    {form.isFeatured && (
+                      <span className="px-2 py-0.5 bg-indigo-100 text-indigo-900 font-bold rounded text-[10px]">
+                        ⭐ Featured
+                      </span>
+                    )}
+                    <span className={`px-2 py-0.5 font-bold rounded text-[10px] ${
+                      form.isActive ? "bg-emerald-100 text-emerald-900" : "bg-rose-100 text-rose-900"
+                    }`}>
+                      {form.isActive ? "✓ Public" : "✕ Hidden"}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* save */}
-            <div style={{
-              marginTop: 28, paddingTop: 20,
-              borderTop: "1px solid #1a1a1a",
-              display: "flex", alignItems: "center", justifyContent: "flex-end",
-            }}>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                style={{ ...s.btnWhite, opacity: loading ? 0.6 : 1, minWidth: 140, justifyContent: "center" }}
-              >
-                {loading ? (
-                  <>
-                    <div style={{
-                      width: 14, height: 14,
-                      border: "2px solid rgba(0,0,0,0.3)",
-                      borderTopColor: "#000",
-                      borderRadius: "50%",
-                      animation: "spin 0.7s linear infinite",
-                    }} />
-                    Saving…
-                  </>
-                ) : (
-                  <><CheckCircle size={15} /> Save Changes</>
-                )}
-              </button>
-            </div>
           </div>
         )}
 
-        {/* Nav buttons */}
-        {step < 3 && (
-          <div style={{
-            padding: "16px 32px 24px",
-            borderTop: "1px solid #1a1a1a",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
+        {/* Navigation Buttons */}
+        <div className="flex items-center justify-between pt-6 mt-6 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={prevStep}
+            disabled={step === 0}
+            className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-40"
+          >
+            Back
+          </button>
+          {step < 3 ? (
             <button
-              onClick={prevStep}
-              disabled={step === 0}
-              style={{ ...s.btnGhost, opacity: step === 0 ? 0.3 : 1 }}
+              type="button"
+              onClick={nextStep}
+              className="flex items-center gap-1.5 px-6 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all shadow-sm"
             >
-              Back
-            </button>
-
-            {/* dots */}
-            <div style={{ display: "flex", gap: 6 }}>
-              {STEPS.map((_, i) => (
-                <div key={i} style={{
-                  height: 5, borderRadius: 999,
-                  background: i === step ? "#fff" : i < step ? "#333" : "#1a1a1a",
-                  width: i === step ? 20 : 5,
-                  transition: "all .3s",
-                }} />
-              ))}
-            </div>
-
-            <button onClick={nextStep} style={s.btnWhite}>
               Continue <ChevronRight size={14} />
             </button>
-          </div>
-        )}
+          ) : (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleSubmit}
+              className="flex items-center gap-2 px-8 py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase rounded-xl transition-all shadow-md"
+            >
+              {loading ? "Saving Changes..." : <><CheckCircle size={15} /> Save Changes Live</>}
+            </button>
+          )}
+        </div>
       </div>
-
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }

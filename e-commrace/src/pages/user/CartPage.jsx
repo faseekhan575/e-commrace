@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   EasypaisaLogo, JazzCashLogo, BankTransferLogos,
-  CardLogos, GooglePayLogo, ApplePayLogo, CODLogo
+  CardLogos, GooglePayLogo, ApplePayLogo, CODLogo, SadaPayLogo
 } from "../../components/PaymentLogos";
 import toast from "react-hot-toast";
 
@@ -289,9 +289,11 @@ export default function CartPage() {
                   Guaranteed Multi-Channel Checkout
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  <EasypaisaLogo className="scale-90" />
-                  <JazzCashLogo className="scale-90" />
-                  <CODLogo className="scale-90" />
+                  <CODLogo />
+                  <EasypaisaLogo />
+                  <JazzCashLogo />
+                  <SadaPayLogo />
+                  <CardLogos />
                 </div>
               </div>
             </div>

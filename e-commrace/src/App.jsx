@@ -37,6 +37,7 @@ import AdminCreateProduct from "./pages/admin/AdminCreateProduct";
 import AdminEditProduct from "./pages/admin/AdminEditProduct";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminBanners from "./pages/admin/AdminBanners";
+import AdminSpotlight from "./pages/admin/AdminSpotlight";
 
 // Transition
 import PageTransition from "./components/PageTransition";
@@ -97,6 +98,7 @@ export default function App() {
           <Route index                element={<HomePage />} />
           <Route path="products"      element={<ProductsPage />} />
           <Route path="products/:id"  element={<ProductDetailPage />} />
+          <Route path="product/:id"   element={<ProductDetailPage />} />
           <Route path="about"         element={<AboutPage />} />
           <Route path="contact"       element={<ContactPage />} />
           <Route path="cart"          element={<CartPage />} />
@@ -111,7 +113,9 @@ export default function App() {
           <Route path="products"                   element={<AdminProducts />} />
           <Route path="products/create"            element={<AdminCreateProduct />} />
           <Route path="products/:id/edit"          element={<AdminEditProduct />} />
+          <Route path="products/edit/:id"          element={<AdminEditProduct />} />
           <Route path="banners"                    element={<AdminBanners />} />
+          <Route path="spotlight"                  element={<AdminSpotlight />} />
           <Route path="orders"                     element={<AdminOrders />} />
           <Route path="orders/:id"                 element={<AdminOrderDetail />} />
           <Route path="categories"                 element={<AdminCategories />} />

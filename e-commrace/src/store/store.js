@@ -3,6 +3,7 @@ import authReducer from "./authSlice";
 import cartReducer from "./cartSlice";
 import productsReducer from "./productsSlice";
 import bannerReducer from "./bannerSlice";
+import spotlightReducer from "./spotlightSlice";
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     cart: cartReducer,
     products: productsReducer,
     banners: bannerReducer,
+    spotlight: spotlightReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

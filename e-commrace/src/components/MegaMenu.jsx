@@ -106,26 +106,35 @@ export const MEGA_MENU_DATA = {
       badge: "Pure Silk 100%",
     },
   },
-  "menswear": {
-    label: "Men's Kurta",
-    badge: "EASTERN",
+  "festive-velvet": {
+    label: "Velvet & Festive",
+    badge: "WEDDING EDIT",
     columns: [
       {
-        title: "Men's Apparel",
+        title: "Velvet Silhouettes",
         links: [
-          { label: "Pure Cotton Kurtas", url: "/products?search=men" },
-          { label: "Embroidered Collar Kurtas", url: "/products?search=kurta" },
-          { label: "Kurta Shalwar Complete Sets", url: "/products?search=men" },
-          { label: "Brocade & Jamawar Waistcoats", url: "/products?search=waistcoat" },
+          { label: "Micro Velvet 9000 Kurtas", url: "/products?search=velvet" },
+          { label: "Embroidered Angrakha Suits", url: "/products?search=angrakha" },
+          { label: "Velvet Shawl Ensemble Sets", url: "/products?search=shawl" },
+          { label: "Peshwas & Royal Formals", url: "/products?search=festive" },
+        ],
+      },
+      {
+        title: "Embellishment Craft",
+        links: [
+          { label: "Handcrafted Zari & Dabka", url: "/products?search=zari" },
+          { label: "Antique Gota & Tilla", url: "/products?search=embroidered" },
+          { label: "Marori & Sitara Work", url: "/products?search=velvet" },
+          { label: "Resham Threadwork", url: "/products?search=silk" },
         ],
       },
     ],
     featured: {
-      title: "Men's Festive Kurtas",
-      subtitle: "Tailored fit with crisp band collar and mother-of-pearl buttons.",
-      image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80",
-      link: "/products?category=mens-kurta",
-      badge: "100% Giza Cotton",
+      title: "Royal Velvet & Festive Edit",
+      subtitle: "Heirloom micro-velvets adorned with royal gold tilla and zari shawls.",
+      image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=80",
+      link: "/products?search=velvet",
+      badge: "Pure Micro Velvet",
     },
   },
   "special-offers": {

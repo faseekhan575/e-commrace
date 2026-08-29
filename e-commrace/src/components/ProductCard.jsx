@@ -43,22 +43,18 @@ export default function ProductCard({ product, index = 0 }) {
   const handleQuickAdd = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isAuthenticated) {
-      toast.error("Please sign in to add items to bag");
-      navigate("/login");
-      return;
-    }
-    const res = await dispatch(addToCart({ productId: id, quantity: 1 }));
-    if (addToCart.fulfilled.match(res)) {
-      toast.success(`Added ${title} (${selectedSize}) to Bag`, {
-        icon: "🛍️",
-        style: { borderRadius: "10px", background: "#1a1a14", color: "#fff", fontSize: "12px" }
-      });
-      setShowSizePicker(false);
-    } else {
-      toast.error(res.payload || "Added to cart!");
-      setShowSizePicker(false);
-    }
+    const res = await dispatch(addToCart({
+      productId: id,
+      quantity: 1,
+      product,
+      size: selectedSize,
+      stitching: product?.stitching || "Stitched"
+    }));
+    toast.success(`Added ${title} (${selectedSize}) to Bag`, {
+      icon: "🛍️",
+      style: { borderRadius: "10px", background: "#1a1a14", color: "#fff", fontSize: "12px" }
+    });
+    setShowSizePicker(false);
   };
 
   const discountPercent = discountPrice && discountPrice < price

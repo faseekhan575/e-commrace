@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts, fetchCategories, fetchHotProducts } from "../../store/productsSlice";
 import { fetchActiveBanners } from "../../store/bannerSlice";
+import { fetchActiveSpotlights } from "../../store/spotlightSlice";
 import ProductCard from "../../components/ProductCard";
-import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES, FABRICS_LIST } from "../../data/clothingData";
+import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES } from "../../data/clothingData";
 import { optimizeImage } from "../../utils/imageOptimizer";
 import {
   ArrowRight, Sparkles, ChevronLeft, ChevronRight,
@@ -16,9 +17,9 @@ export default function HomePage() {
   const dispatch = useDispatch();
   const { list: serverProducts, hotList, categories: serverCategories } = useSelector((s) => s.products);
   const { activeList: banners } = useSelector((s) => s.banners);
+  const { activeSpotlight } = useSelector((s) => s.spotlight);
 
   const [heroSlide, setHeroSlide] = useState(0);
-  const [selectedFabric, setSelectedFabric] = useState("all");
   const [selectedBannerCollection, setSelectedBannerCollection] = useState("");
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function HomePage() {
     dispatch(fetchHotProducts({ limit: 8, type: "both" }));
     dispatch(fetchCategories({ isFeatured: true }));
     dispatch(fetchActiveBanners(selectedBannerCollection));
+    dispatch(fetchActiveSpotlights());
   }, [dispatch, selectedBannerCollection]);
 
   const activeBanners = banners.filter((b) => b.isActive !== false && b.active !== false);
@@ -39,26 +41,18 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [activeBanners.length]);
 
-  // Combine live server products with clothing fallbacks
-  const products = (serverProducts && serverProducts.length > 0)
-    ? serverProducts.map((p, idx) => ({
-        ...p,
-        fabric: p.fabric || CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].fabric,
-        sizes: p.sizes || ["XS", "S", "M", "L", "XL"],
-        images: p.images && p.images.length > 0 ? p.images : CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].images,
-      }))
-    : CLOTHING_PRODUCTS;
+  // Live server products and categories from MongoDB backend
+  const products = serverProducts || [];
+  const categories = serverCategories || [];
 
-  const categories = (serverCategories && serverCategories.length > 0)
-    ? serverCategories
-    : CLOTHING_CATEGORIES;
+  // Filter hot products: either explicitly marked isHot or top items
+  const topSellingProducts = (hotList && hotList.length > 0)
+    ? hotList
+    : products.filter((p) => p.isHot).length > 0
+    ? products.filter((p) => p.isHot).slice(0, 8)
+    : products.slice(0, 8);
 
-  // Filter products by selected fabric
-  const filteredProducts = selectedFabric === "all"
-    ? products
-    : products.filter((p) => p.fabric?.toLowerCase().includes(selectedFabric.toLowerCase()) || p.tags?.includes(selectedFabric.toLowerCase()));
-
-  const hotProducts = filteredProducts.slice(0, 8);
+  const spotlightImg = activeSpotlight?.image?.url || activeSpotlight?.image || "";
 
   return (
     <div className="bg-[#fafaf8] overflow-hidden">
@@ -77,7 +71,6 @@ export default function HomePage() {
                 idx === heroSlide ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
               }`}
             >
-              {/* Cloudinary Optimized Background Model Photoshoot */}
               <img
                 src={optimizeImage(imgUrl, { width: 1920 })}
                 alt={slide.title}
@@ -91,7 +84,6 @@ export default function HomePage() {
                 }}
               />
 
-              {/* Slide Content Box */}
               <div className={`absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-center z-20 ${
                 align === "center" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left"
               }`}>
@@ -101,31 +93,21 @@ export default function HomePage() {
                       {slide.badge}
                     </span>
                   )}
-                  <p className="text-xs sm:text-sm font-semibold tracking-[0.3em] uppercase text-[#e0e0d0] font-mono">
-                    {slide.tagline || slide.collectionType?.replace("_", " ").toUpperCase() || "SUMMER COUTURE"}
-                  </p>
-                  <h1
-                    className="font-serif text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08]"
-                    style={{ color: slide.textColor || "#FFFFFF" }}
-                  >
+                  <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.05]">
                     {slide.title}
                   </h1>
-                  <p className="text-xs sm:text-sm text-[#c0c0b0] leading-relaxed max-w-md line-clamp-2">
-                    {slide.subtitle}
-                  </p>
-                  <div className={`pt-4 flex items-center gap-4 ${align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start"}`}>
+                  {slide.subtitle && (
+                    <p className="text-sm sm:text-base text-gray-200 font-light max-w-md">
+                      {slide.subtitle}
+                    </p>
+                  )}
+                  <div className="pt-2">
                     <Link
                       to={slide.ctaLink || "/products"}
-                      className="px-8 py-3.5 bg-white text-black hover:bg-[#d4af37] hover:text-black font-bold text-xs uppercase tracking-[0.2em] rounded-sm transition-all shadow-xl hover:scale-105 flex items-center gap-2"
+                      className="inline-flex items-center gap-2 px-7 py-3.5 bg-white hover:bg-[#d4af37] text-black font-bold text-xs uppercase tracking-[0.2em] rounded-sm transition-all hover:scale-105 shadow-xl"
                     >
-                      <span>{slide.ctaText || "Shop The Collection"}</span>
+                      <span>{slide.ctaText || "Shop Collection"}</span>
                       <ArrowRight size={14} />
-                    </Link>
-                    <Link
-                      to="/products?category=unstitched-lawn"
-                      className="hidden sm:inline-flex px-6 py-3.5 border border-white/40 text-white hover:border-white text-xs font-bold uppercase tracking-[0.2em] rounded-sm transition-all"
-                    >
-                      View Lookbook
                     </Link>
                   </div>
                 </div>
@@ -134,7 +116,6 @@ export default function HomePage() {
           );
         })}
 
-        {/* Carousel Slider Controls */}
         {activeBanners.length > 1 && (
           <>
             <button
@@ -152,7 +133,6 @@ export default function HomePage() {
               <ChevronRight size={22} />
             </button>
 
-            {/* Slide indicators */}
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5">
               {activeBanners.map((_, i) => (
                 <button
@@ -169,7 +149,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* ── 2. Visual Categories Grid (Sapphire Signature Layout) ── */}
+      {/* ── 2. Visual Categories Grid (Section 1 in User Screenshots) ── */}
       <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <p className="text-xs font-mono uppercase tracking-[0.25em] text-[#78786a] mb-2">
@@ -212,12 +192,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 3. Hot Products & Hot Deals (`/api/v3/product/hot`) ── */}
-      <section className="py-16 bg-white border-y border-[#e8e8e0]">
+      {/* ── 3. Top Selling / Top Rated Apparel (Section 2 in User Screenshots - Clean & No Fabric Buttons) ── */}
+      <section className="py-16 sm:py-20 bg-white border-y border-[#e8e8e0]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* Section Header with Fabric Tabs */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+          {/* Section Header */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 pb-4 border-b border-[#f0f0ea]">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Flame size={16} className="text-amber-600" />
@@ -230,37 +210,18 @@ export default function HomePage() {
               </h2>
             </div>
 
-            {/* Fabric Tabs */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedFabric("all")}
-                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all ${
-                  selectedFabric === "all"
-                    ? "bg-[#141410] text-white"
-                    : "bg-[#f5f5f0] text-[#78786a] hover:text-black"
-                }`}
-              >
-                All Fabrics
-              </button>
-              {FABRICS_LIST.map((fab) => (
-                <button
-                  key={fab.tag}
-                  onClick={() => setSelectedFabric(fab.tag)}
-                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all ${
-                    selectedFabric === fab.tag
-                      ? "bg-[#141410] text-white"
-                      : "bg-[#f5f5f0] text-[#78786a] hover:text-black"
-                  }`}
-                >
-                  {fab.name}
-                </button>
-              ))}
-            </div>
+            <Link
+              to="/products"
+              className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] hover:text-[#d4af37] flex items-center gap-1 transition-colors"
+            >
+              <span>View All Outfits</span>
+              <ArrowRight size={14} />
+            </Link>
           </div>
 
           {/* Portrait Product Cards Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {hotProducts.map((product, idx) => (
+            {topSellingProducts.map((product, idx) => (
               <ProductCard key={product._id || idx} product={product} index={idx} />
             ))}
           </div>
@@ -278,55 +239,63 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 4. Interactive Lookbook Spotlight (Shop the Model's Look) ── */}
+      {/* ── 4. Dynamic Editorial Lookbook Spotlight (Section 3 in User Screenshots - `/api/v11/spotlight`) ── */}
       <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-[#141410] text-white rounded-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-center">
+        <div className="bg-[#141410] text-white rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-center shadow-xl">
           
           {/* Left: Model Photo */}
-          <div className="lg:col-span-6 relative aspect-[3/4] lg:aspect-auto lg:h-[600px] overflow-hidden">
+          <div className="lg:col-span-6 relative aspect-[3/4] lg:aspect-auto lg:h-[600px] overflow-hidden bg-black">
             <img
-              src={optimizeImage("https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=1200&q=85", { width: 1200 })}
-              alt="Model Lookbook"
+              src={optimizeImage(spotlightImg, { width: 1200 })}
+              alt={activeSpotlight?.title || "Model Lookbook"}
               className="w-full h-full object-cover object-top"
             />
             {/* Clickable Hotspot Badge */}
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md text-black px-3.5 py-1.5 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 animate-bounce">
+            <div
+              className="absolute bg-white/95 backdrop-blur-md text-black px-3.5 py-1.5 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 animate-bounce"
+              style={{
+                left: `${activeSpotlight?.hotspot?.posX ?? 35}%`,
+                top: `${activeSpotlight?.hotspot?.posY ?? 40}%`,
+              }}
+            >
               <Sparkles size={13} className="text-[#d4af37]" />
-              <span>Shop The Model's Kurta</span>
+              <span>{activeSpotlight?.hotspot?.text || "✨ Shop The Model's Kurta"}</span>
             </div>
           </div>
 
           {/* Right: Lookbook Details & Fast Checkout */}
           <div className="lg:col-span-6 p-8 sm:p-14 space-y-6">
             <span className="text-xs font-mono uppercase tracking-[0.3em] text-[#d4af37]">
-              FESTIVE EDITORIAL 2026
+              {activeSpotlight?.eyebrow || "FESTIVE EDITORIAL 2026"}
             </span>
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
-              Raw Silk Zari Kurta with Organza Dupatta
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight text-white">
+              {activeSpotlight?.title || "Raw Silk Zari Kurta with Organza Dupatta"}
             </h2>
             <p className="text-xs sm:text-sm text-[#b0b0a0] leading-relaxed">
-              Crafted from pure 80-gram raw silk with intricate antique kora-dabka neckline hand embroidery, paired with a laser-cut organza dupatta with scalloped borders.
+              {activeSpotlight?.description || "Crafted from pure 80-gram raw silk with intricate antique kora-dabka neckline hand embroidery, paired with a laser-cut organza dupatta with scalloped borders."}
             </p>
 
             <div className="flex items-baseline gap-4 py-2 border-y border-white/10">
-              <span className="font-serif text-3xl font-bold text-[#d4af37]">PKR 12,500</span>
-              <span className="text-xs text-emerald-400 font-bold bg-emerald-950/60 px-2.5 py-1 rounded">
-                ✓ Ready to Dispatch in 24h
+              <span className="font-serif text-3xl font-bold text-[#d4af37]">
+                {activeSpotlight?.currency || "PKR"} {Number(activeSpotlight?.price || 12500).toLocaleString()}
+              </span>
+              <span className="text-xs text-emerald-400 font-bold bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-500/20">
+                {activeSpotlight?.dispatchBadge || "✓ Ready to Dispatch in 24h"}
               </span>
             </div>
 
             <div className="pt-2 flex flex-wrap gap-4">
               <Link
-                to="/products/6"
-                className="px-8 py-3.5 bg-[#d4af37] hover:bg-white text-black font-bold text-xs uppercase tracking-[0.2em] rounded-sm transition-all shadow-lg"
+                to={activeSpotlight?.primaryCta?.link || "/products"}
+                className="px-8 py-3.5 bg-[#d4af37] hover:bg-white text-black font-bold text-xs uppercase tracking-[0.2em] rounded-sm transition-all shadow-lg hover:scale-105"
               >
-                Shop This Complete Outfit
+                {activeSpotlight?.primaryCta?.text || "Shop This Complete Outfit"}
               </Link>
               <Link
-                to="/products?category=luxury-pret"
+                to={activeSpotlight?.secondaryCta?.link || "/products?category=luxury-pret"}
                 className="px-6 py-3.5 border border-white/30 text-white hover:border-white text-xs font-bold uppercase tracking-[0.2em] rounded-sm transition-all"
               >
-                View Full Lookbook
+                {activeSpotlight?.secondaryCta?.text || "View Full Lookbook"}
               </Link>
             </div>
           </div>

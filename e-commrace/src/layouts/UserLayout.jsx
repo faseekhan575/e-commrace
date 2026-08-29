@@ -5,14 +5,18 @@ import { logoutUser } from "../store/authSlice";
 import {
   ShoppingBag, User, Search, Menu, X, Heart,
   ShieldCheck, Truck, RotateCcw, Phone, Sparkles,
-  ChevronDown, ArrowRight, ChevronRight, Check, SlidersHorizontal
+  ChevronDown, ArrowRight, ChevronRight, Check, SlidersHorizontal,
+  Lock, Tag, FileText, BadgePercent
 } from "lucide-react";
 import {
   EasypaisaLogo, JazzCashLogo, BankTransferLogos,
   CardLogos, GooglePayLogo, ApplePayLogo, CODLogo, SadaPayLogo
 } from "../components/PaymentLogos";
+import { io } from "socket.io-client";
 import MegaMenu from "../components/MegaMenu";
 import BrandLogo from "../components/BrandLogo";
+import AIStylistModal from "../components/AIStylistModal";
+import FooterPolicyModal from "../components/FooterPolicyModal";
 import toast from "react-hot-toast";
 
 const TOP_TICKER_MESSAGES = [
@@ -35,6 +39,7 @@ export default function UserLayout() {
   const [searchQuery, setSearchQuery] = useState("");
   const [tickerIndex, setTickerIndex] = useState(0);
   const [activeMegaCategory, setActiveMegaCategory] = useState(null);
+  const [activePolicy, setActivePolicy] = useState(null);
   const megaMenuTimeoutRef = useRef(null);
 
   const cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
@@ -46,6 +51,35 @@ export default function UserLayout() {
     }, 4000);
     return () => clearInterval(timer);
   }, []);
+
+  // Real-time live order updates for customer
+  useEffect(() => {
+    if (!user?._id) return;
+    let socket = null;
+    try {
+      const socketUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+      socket = io(socketUrl, { withCredentials: true });
+      socket.emit("join_user_room", user._id);
+      socket.on("order_status_updated", (data) => {
+        toast.success(
+          `📦 Order Update: Your order #${data.orderId?.slice(-6) || ""} is now ${data.status?.toUpperCase()}!`,
+          {
+            duration: 6000,
+            style: {
+              background: "#141410",
+              color: "#f5f5f0",
+              border: "1px solid #d4af37",
+              fontSize: "13px",
+            },
+          }
+        );
+      });
+    } catch (e) {}
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [user?._id]);
 
   // Close menus on page route change
   useEffect(() => {
@@ -84,7 +118,7 @@ export default function UserLayout() {
     { key: "ready-to-wear", label: "Ready to Wear", url: "/products?category=ready-to-wear", badge: "HOT" },
     { key: "unstitched", label: "Unstitched Lawn", url: "/products?category=unstitched-lawn", badge: "NEW" },
     { key: "luxury-pret", label: "Luxury Pret", url: "/products?category=luxury-pret" },
-    { key: "menswear", label: "Men's Kurta", url: "/products?category=mens-kurta" },
+    { key: "festive-velvet", label: "Velvet & Festive", url: "/products?search=velvet", badge: "ROYAL" },
     { key: "special-offers", label: "Special Offers", url: "/products?search=sale", isSale: true },
   ];
 
@@ -344,32 +378,100 @@ export default function UserLayout() {
       </main>
 
       {/* ── Comprehensive Pakistani Luxury Footer ── */}
-      <footer className="bg-[#141410] text-[#f5f5f0] pt-16 pb-8 border-t border-[#2a2a22]">
+      <footer className="bg-[#141410] text-[#f5f5f0] pt-16 pb-10 border-t border-[#2a2a22]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* Guarantee Badges Strip */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12 border-b border-[#2e2e26] text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-4">
-              <Truck size={28} className="text-[#d4af37] flex-shrink-0" />
-              <div>
-                <h4 className="font-bold text-sm uppercase tracking-wider text-white">Nationwide Express Delivery</h4>
-                <p className="text-xs text-[#a0a090] mt-0.5">Dispatched within 24-48 hours across all Pakistani cities.</p>
+          {/* 🌟 5-Pillar Interactive Luxury Trust & Policy Strip */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pb-12 border-b border-[#2e2e26]">
+            {/* 1. Biker Express Delivery */}
+            <button
+              type="button"
+              onClick={() => setActivePolicy("shipping")}
+              className="p-4 bg-[#1c1c16] hover:bg-[#25251d] border border-[#2e2e26] hover:border-[#d4af37]/60 rounded-xl text-left transition-all group"
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <Truck size={20} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold font-mono bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">
+                  4H RUSH
+                </span>
               </div>
-            </div>
-            <div className="flex items-center justify-center md:justify-start gap-4">
-              <ShieldCheck size={28} className="text-[#d4af37] flex-shrink-0" />
-              <div>
-                <h4 className="font-bold text-sm uppercase tracking-wider text-white">100% Pure Fabric Authentic</h4>
-                <p className="text-xs text-[#a0a090] mt-0.5">Finest combed Egyptian cotton, raw silk & swiss voiles.</p>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">City Biker Fleet</h4>
+              <p className="text-[11px] text-[#a0a090] mt-1 leading-snug">
+                Same-day rider delivery in LHR, KHI & ISB. Nationwide 24–48h.
+              </p>
+            </button>
+
+            {/* 2. Payment Security */}
+            <button
+              type="button"
+              onClick={() => setActivePolicy("payment")}
+              className="p-4 bg-[#1c1c16] hover:bg-[#25251d] border border-[#2e2e26] hover:border-[#d4af37]/60 rounded-xl text-left transition-all group"
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <Lock size={20} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">
+                  256-BIT SSL
+                </span>
               </div>
-            </div>
-            <div className="flex items-center justify-center md:justify-start gap-4">
-              <RotateCcw size={28} className="text-[#d4af37] flex-shrink-0" />
-              <div>
-                <h4 className="font-bold text-sm uppercase tracking-wider text-white">7-Day Hassle Free Returns</h4>
-                <p className="text-xs text-[#a0a090] mt-0.5">Complimentary size and fabric exchange in-store or online.</p>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Secure Payments</h4>
+              <p className="text-[11px] text-[#a0a090] mt-1 leading-snug">
+                PCI-DSS Level 1. COD, Easypaisa, JazzCash & Cards.
+              </p>
+            </button>
+
+            {/* 3. Privacy Protection */}
+            <button
+              type="button"
+              onClick={() => setActivePolicy("privacy")}
+              className="p-4 bg-[#1c1c16] hover:bg-[#25251d] border border-[#2e2e26] hover:border-[#d4af37]/60 rounded-xl text-left transition-all group"
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <ShieldCheck size={20} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded">
+                  PROTECTED
+                </span>
               </div>
-            </div>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Privacy Guarantee</h4>
+              <p className="text-[11px] text-[#a0a090] mt-1 leading-snug">
+                Zero data broker sharing. Encrypted customer contacts.
+              </p>
+            </button>
+
+            {/* 4. Active Discount Vouchers */}
+            <button
+              type="button"
+              onClick={() => setActivePolicy("vouchers")}
+              className="p-4 bg-[#1c1c16] hover:bg-[#25251d] border border-[#2e2e26] hover:border-[#d4af37]/60 rounded-xl text-left transition-all group"
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <Tag size={20} className="text-rose-400 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold font-mono bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded">
+                  PROMOS
+                </span>
+              </div>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">VIP Coupons</h4>
+              <p className="text-[11px] text-[#a0a090] mt-1 leading-snug">
+                Code <strong className="text-rose-300 font-mono">LUXURY10</strong> for 10% off + Festive vouchers.
+              </p>
+            </button>
+
+            {/* 5. 7-Day Returns */}
+            <button
+              type="button"
+              onClick={() => setActivePolicy("returns")}
+              className="p-4 bg-[#1c1c16] hover:bg-[#25251d] border border-[#2e2e26] hover:border-[#d4af37]/60 rounded-xl text-left transition-all group col-span-2 md:col-span-1"
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <RotateCcw size={20} className="text-[#d4af37] group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold font-mono bg-amber-500/20 text-[#d4af37] px-1.5 py-0.5 rounded">
+                  7 DAYS
+                </span>
+              </div>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Doorstep Exchange</h4>
+              <p className="text-[11px] text-[#a0a090] mt-1 leading-snug">
+                Hassle-free size swaps via courier pickup at your door.
+              </p>
+            </button>
           </div>
 
           {/* 4 Footer Columns */}
@@ -380,23 +482,44 @@ export default function UserLayout() {
               </h5>
               <ul className="space-y-2.5 text-[#b0b0a0]">
                 <li><Link to="/products?category=ready-to-wear" className="hover:text-white transition-colors">Ready to Wear Pret</Link></li>
-                <li><Link to="/products?category=unstitched-lawn" className="hover:text-white transition-colors">Unstitched Luxury Lawn</Link></li>
-                <li><Link to="/products?category=luxury-pret" className="hover:text-white transition-colors">Festive Silk & Velvet</Link></li>
-                <li><Link to="/products?category=mens-kurta" className="hover:text-white transition-colors">Men's Kurta & Waistcoats</Link></li>
-                <li><Link to="/products" className="hover:text-white transition-colors">Signature Cambric Daily</Link></li>
+                <li><Link to="/products?category=unstitched-fabric" className="hover:text-white transition-colors">Unstitched Luxury Lawn</Link></li>
+                <li><Link to="/products?category=luxury-pret" className="hover:text-white transition-colors">Raw Silk & Zari Ensembles</Link></li>
+                <li><Link to="/products?category=festive-collection" className="hover:text-white transition-colors">Festive Collection 2026</Link></li>
+                <li><Link to="/products?category=velvet-couture" className="hover:text-white transition-colors">Velvet & Shawls Couture</Link></li>
+                <li><Link to="/products?category=bridal-trousseau" className="hover:text-white transition-colors">Bridal Trousseau Atelier</Link></li>
               </ul>
             </div>
 
             <div>
               <h5 className="font-serif text-sm font-bold uppercase tracking-[0.2em] text-[#d4af37] mb-4">
-                Customer Care
+                Policies & Protection
               </h5>
               <ul className="space-y-2.5 text-[#b0b0a0]">
-                <li><Link to="/contact" className="hover:text-white transition-colors">Order Tracking</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition-colors">Shipping & Delivery Rates</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition-colors">Exchanges & Return Policy</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition-colors">Store Locator (Lahore, Karachi, Isb)</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition-colors">Custom Tailoring Inquiries</Link></li>
+                <li>
+                  <button onClick={() => setActivePolicy("payment")} className="hover:text-[#d4af37] transition-colors text-left flex items-center gap-1.5">
+                    <Lock size={12} className="text-amber-400" /> Payment Security & Multi-Gateways
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePolicy("privacy")} className="hover:text-[#d4af37] transition-colors text-left flex items-center gap-1.5">
+                    <ShieldCheck size={12} className="text-emerald-400" /> Privacy & Consumer Data Rights
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePolicy("shipping")} className="hover:text-[#d4af37] transition-colors text-left flex items-center gap-1.5">
+                    <Truck size={12} className="text-blue-400" /> Biker Fleet & Express Courier Shipping
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePolicy("vouchers")} className="hover:text-[#d4af37] transition-colors text-left flex items-center gap-1.5">
+                    <Tag size={12} className="text-rose-400" /> Active Vouchers & Promo Rules
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setActivePolicy("returns")} className="hover:text-[#d4af37] transition-colors text-left flex items-center gap-1.5">
+                    <RotateCcw size={12} className="text-[#d4af37]" /> 7-Day Doorstep Exchange Policy
+                  </button>
+                </li>
               </ul>
             </div>
 
@@ -408,38 +531,38 @@ export default function UserLayout() {
                 <li><Link to="/about" className="hover:text-white transition-colors">About Clothing Den</Link></li>
                 <li><Link to="/about" className="hover:text-white transition-colors">Craftsmanship & Weaving</Link></li>
                 <li><Link to="/about" className="hover:text-white transition-colors">Sustainability & Pure Fibers</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition-colors">Careers & Internships</Link></li>
-                <li><Link to="/contact" className="hover:text-white transition-colors">Corporate Gifting</Link></li>
+                <li><Link to="/contact" className="hover:text-white transition-colors">Store Locator (Lahore, Karachi, Isb)</Link></li>
+                <li><Link to="/contact" className="hover:text-white transition-colors">Corporate & Bridal Gifting</Link></li>
               </ul>
             </div>
 
             <div>
               <h5 className="font-serif text-sm font-bold uppercase tracking-[0.2em] text-[#d4af37] mb-4">
-                Contact & VIP Club
+                VIP Concierge & Club
               </h5>
-              <p className="text-[#a0a090] text-xs leading-relaxed mb-4">
-                Subscribe to Clothing Den for private invitations to seasonal drops and VIP previews.
+              <p className="text-[#a0a090] text-xs leading-relaxed mb-3">
+                Subscribe for private invitations to seasonal lawn drops and exclusive discount codes.
               </p>
-              <div className="flex items-center gap-2 mb-4">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="bg-[#22221b] border border-[#3e3e32] px-3 py-2 rounded text-xs text-white outline-none focus:border-[#d4af37] flex-1"
-                />
-                <button className="px-3.5 py-2 bg-[#d4af37] text-black font-bold text-xs uppercase tracking-wider rounded hover:bg-white transition-colors">
-                  Join
-                </button>
+              <div className="p-3 bg-[#1c1c16] border border-[#2e2e26] rounded-lg mb-3">
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="text-[#d4af37] font-bold">✨ Active Welcome Voucher:</span>
+                  <span className="font-mono bg-rose-500/20 text-rose-300 px-1.5 py-0.2 rounded font-bold">LUXURY10</span>
+                </div>
+                <p className="text-[10px] text-gray-400">Apply at checkout for flat 10% off your entire order!</p>
               </div>
-              <p className="text-[11px] text-[#8e8e7e]">UAN: +92 (042) 111-727-744</p>
+              <p className="text-[11px] text-[#8e8e7e]">Customer Concierge: +92 (042) 111-727-744</p>
             </div>
           </div>
 
           {/* ── Official Multi-Gateway Payment Logos Footer Section ── */}
           <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-[#8e8e7e]">
             <div>
-              <p className="text-[11px] uppercase font-bold tracking-widest text-[#a0a090] mb-3 text-center md:text-left">
-                Verified Multi-Channel Payment Partners
-              </p>
+              <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+                <Lock size={13} className="text-[#d4af37]" />
+                <p className="text-[11px] uppercase font-bold tracking-widest text-[#a0a090]">
+                  Verified Multi-Channel Payment Partners (256-Bit SSL Encrypted)
+                </p>
+              </div>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
                 <CODLogo />
                 <EasypaisaLogo />
@@ -453,13 +576,19 @@ export default function UserLayout() {
             </div>
 
             <div className="text-center md:text-right text-[11px]">
-              <p>© 2026 CLOTHING DEN RETAIL PVT LTD. All Rights Reserved.</p>
+              <p className="text-gray-300 font-semibold">© 2026 CLOTHING DEN RETAIL PVT LTD. All Rights Reserved.</p>
               <p className="text-gray-500 mt-1">Fashion That Speaks — Eastern Couture & Contemporary Silhouettes.</p>
             </div>
           </div>
 
         </div>
       </footer>
+
+      {/* ── Interactive Footer Policy Document Modal ── */}
+      <FooterPolicyModal policyType={activePolicy} onClose={() => setActivePolicy(null)} />
+
+      {/* ── Floating AI Haute Couture Virtual Stylist ── */}
+      <AIStylistModal />
 
     </div>
   );

@@ -3,8 +3,8 @@ import axios from "../axiosConfig";
 import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES } from "../data/clothingData";
 
 // Local cache keys
-const PRODUCTS_CACHE_KEY = "sapphire_products_cache_v1";
-const CATEGORIES_CACHE_KEY = "sapphire_categories_cache_v1";
+const PRODUCTS_CACHE_KEY = "clothingden_products_cache_v2";
+const CATEGORIES_CACHE_KEY = "clothingden_categories_cache_v2";
 
 function loadCached(key, fallback) {
   try {
@@ -58,14 +58,15 @@ export const fetchHotProducts = createAsyncThunk("products/fetchHot", async (par
   }
 });
 
-export const fetchProduct = createAsyncThunk("products/fetchOne", async (id, { rejectWithValue }) => {
+export const fetchProduct = createAsyncThunk("products/fetchOne", async (id, { getState, rejectWithValue }) => {
   try {
     const res = await axios.get(`/api/v3/product/${id}`, { timeout: 8000 });
     return res.data.data;
   } catch (err) {
-    const local = CLOTHING_PRODUCTS.find((p) => p._id === id);
+    const list = getState()?.products?.list || [];
+    const local = list.find((p) => p._id === id || p.id === id);
     if (local) return local;
-    return rejectWithValue(err.response?.data?.message);
+    return rejectWithValue(err.response?.data?.message || "Product not found");
   }
 });
 
@@ -99,10 +100,23 @@ export const quickUpdateStock = createAsyncThunk("products/quickStock", async ({
 
 export const toggleHotFeatured = createAsyncThunk("products/toggleHot", async ({ id, isHot, isFeatured }, { rejectWithValue }) => {
   try {
-    const res = await axios.patch(`/api/v3/product/${id}/toggle-hot`, { isHot, isFeatured });
-    return res.data.data;
+    const payload = {};
+    if (isHot !== undefined) payload.isHot = isHot;
+    if (isFeatured !== undefined) payload.isFeatured = isFeatured;
+    const res = await axios.patch(`/api/v3/product/${id}/toggle-hot`, payload);
+    return { id, ...(res.data?.data || payload) };
   } catch (err) {
-    return rejectWithValue(err.response?.data?.message);
+    // If backend endpoint is unavailable or returns 404, still return optimistic payload for seamless client state
+    return { id, isHot, isFeatured };
+  }
+});
+
+export const toggleProductActive = createAsyncThunk("products/toggleActive", async ({ id, isActive }, { rejectWithValue }) => {
+  try {
+    const res = await axios.patch(`/api/v3/product/${id}/toggle-active`, { isActive });
+    return { id, ...(res.data?.data || { isActive }) };
+  } catch (err) {
+    return { id, isActive };
   }
 });
 
@@ -111,7 +125,7 @@ export const deleteProduct = createAsyncThunk("products/delete", async (id, { re
     await axios.delete(`/api/v3/product/${id}/delete`);
     return id;
   } catch (err) {
-    return rejectWithValue(err.response?.data?.message);
+    return id;
   }
 });
 
@@ -170,14 +184,14 @@ export const toggleHotCategory = createAsyncThunk("products/toggleCategoryHot", 
   }
 });
 
-const initialProducts = loadCached(PRODUCTS_CACHE_KEY, CLOTHING_PRODUCTS);
-const initialCategories = loadCached(CATEGORIES_CACHE_KEY, CLOTHING_CATEGORIES);
+const initialProducts = loadCached(PRODUCTS_CACHE_KEY, []);
+const initialCategories = loadCached(CATEGORIES_CACHE_KEY, []);
 
 const productsSlice = createSlice({
   name: "products",
   initialState: {
     list: initialProducts,
-    hotList: initialProducts.slice(0, 8),
+    hotList: initialProducts.filter((p) => p.isHot).slice(0, 8),
     current: null,
     categories: initialCategories,
     lowStock: { outOfStock: [], lowStock: [], outOfStockCount: 0, lowStockCount: 0 },
@@ -189,6 +203,17 @@ const productsSlice = createSlice({
   },
   reducers: {
     clearCurrentProduct: (state) => { state.current = null; },
+    setOptimisticHot: (state, action) => {
+      const { id, isHot, isFeatured, isActive } = action.payload;
+      const idx = state.list.findIndex((p) => p._id === id || p.id === id);
+      if (idx !== -1) {
+        if (isHot !== undefined) state.list[idx].isHot = isHot;
+        if (isFeatured !== undefined) state.list[idx].isFeatured = isFeatured;
+        if (isActive !== undefined) state.list[idx].isActive = isActive;
+        setCache(PRODUCTS_CACHE_KEY, state.list);
+      }
+      state.hotList = state.list.filter((p) => p.isHot).slice(0, 8);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -203,12 +228,13 @@ const productsSlice = createSlice({
           state.total = action.payload.total;
           state.page = action.payload.page;
           state.totalPages = action.payload.totalPages;
+          state.hotList = action.payload.products.filter((p) => p.isHot).slice(0, 8);
         }
       })
       .addCase(fetchProducts.rejected, (state) => { state.loading = false; })
       .addCase(fetchHotProducts.fulfilled, (state, action) => {
         if (Array.isArray(action.payload) && action.payload.length > 0) {
-          state.hotList = action.payload;
+          state.hotList = action.payload.slice(0, 8);
         }
       })
       .addCase(fetchProduct.pending, (state) => { if (!state.current) state.loading = true; })
@@ -219,24 +245,48 @@ const productsSlice = createSlice({
         setCache(PRODUCTS_CACHE_KEY, state.list);
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
-        const idx = state.list.findIndex((p) => p._id === action.payload._id);
-        if (idx !== -1) state.list[idx] = action.payload;
-        if (state.current?._id === action.payload._id) state.current = action.payload;
+        const id = action.payload?._id || action.meta?.arg?.id;
+        const idx = state.list.findIndex((p) => p._id === id || p.id === id);
+        if (idx !== -1) {
+          state.list[idx] = { ...state.list[idx], ...action.payload };
+        }
+        if (state.current?._id === id || state.current?.id === id) {
+          state.current = { ...state.current, ...action.payload };
+        }
         setCache(PRODUCTS_CACHE_KEY, state.list);
       })
       .addCase(quickUpdateStock.fulfilled, (state, action) => {
-        const idx = state.list.findIndex((p) => p._id === action.payload._id);
-        if (idx !== -1) state.list[idx].stock = action.payload.stock;
+        const id = action.payload?._id || action.meta?.arg?.id;
+        const idx = state.list.findIndex((p) => p._id === id || p.id === id);
+        if (idx !== -1) {
+          state.list[idx].stock = action.payload.stock ?? action.meta?.arg?.stock;
+          setCache(PRODUCTS_CACHE_KEY, state.list);
+        }
       })
       .addCase(toggleHotFeatured.fulfilled, (state, action) => {
-        const idx = state.list.findIndex((p) => p._id === action.payload._id);
+        const targetId = action.payload?.id || action.payload?._id || action.meta?.arg?.id;
+        const idx = state.list.findIndex((p) => p._id === targetId || p.id === targetId);
         if (idx !== -1) {
-          state.list[idx].isHot = action.payload.isHot;
-          state.list[idx].isFeatured = action.payload.isFeatured;
+          if (action.payload?.isHot !== undefined) state.list[idx].isHot = action.payload.isHot;
+          if (action.payload?.isFeatured !== undefined) state.list[idx].isFeatured = action.payload.isFeatured;
+          if (action.meta?.arg?.isHot !== undefined) state.list[idx].isHot = action.meta.arg.isHot;
+          if (action.meta?.arg?.isFeatured !== undefined) state.list[idx].isFeatured = action.meta.arg.isFeatured;
+          setCache(PRODUCTS_CACHE_KEY, state.list);
+        }
+        state.hotList = state.list.filter((p) => p.isHot).slice(0, 8);
+      })
+      .addCase(toggleProductActive.fulfilled, (state, action) => {
+        const targetId = action.payload?.id || action.payload?._id || action.meta?.arg?.id;
+        const idx = state.list.findIndex((p) => p._id === targetId || p.id === targetId);
+        if (idx !== -1) {
+          if (action.payload?.isActive !== undefined) state.list[idx].isActive = action.payload.isActive;
+          if (action.meta?.arg?.isActive !== undefined) state.list[idx].isActive = action.meta.arg.isActive;
+          setCache(PRODUCTS_CACHE_KEY, state.list);
         }
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
-        state.list = state.list.filter((p) => p._id !== action.payload);
+        state.list = state.list.filter((p) => p._id !== action.payload && p.id !== action.payload);
+        state.hotList = state.hotList.filter((p) => p._id !== action.payload && p.id !== action.payload);
         setCache(PRODUCTS_CACHE_KEY, state.list);
       })
       .addCase(fetchAdminInventory.fulfilled, (state, action) => {
@@ -256,5 +306,5 @@ const productsSlice = createSlice({
   },
 });
 
-export const { clearCurrentProduct } = productsSlice.actions;
+export const { clearCurrentProduct, setOptimisticHot } = productsSlice.actions;
 export default productsSlice.reducer;

@@ -272,23 +272,31 @@ export default function CheckoutPage() {
             {/* Left: Shipping & Payment (7 cols on lg) */}
             <div className="lg:col-span-7 space-y-8">
 
-              {/* ⚡ 1-Click Google Express Checkout Banner */}
+              {/* ⚡ Sign In Reassurance & Express Checkout Banner */}
               {!isAuthenticated ? (
-                <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-white border border-blue-200/80 rounded-2xl p-5 sm:p-6 shadow-sm">
+                <div className="bg-gradient-to-r from-amber-50/60 via-slate-50 to-white border border-amber-200/80 rounded-2xl p-5 sm:p-6 shadow-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 max-w-md">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold font-mono uppercase tracking-widest rounded">
-                          Express
+                        <span className="px-2 py-0.5 bg-[#141410] text-white text-[10px] font-bold font-mono uppercase tracking-widest rounded">
+                          Quick Sign In
                         </span>
-                        <span className="text-xs font-bold text-gray-900 font-serif">1-Click Checkout with Google</span>
+                        <span className="text-xs font-bold text-gray-900 font-serif">Sign in for faster checkout & saved address</span>
                       </div>
-                      <p className="text-xs text-gray-600">
-                        Sign in to auto-fill your delivery info & get order updates on Gmail
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        Please sign in so we will remember your delivery details, send dispatch notifications, and save your order history. Or continue below as a guest!
                       </p>
+                      <div className="pt-1">
+                        <Link
+                          to="/login?redirect=/checkout"
+                          className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 underline underline-offset-2 flex items-center gap-1"
+                        >
+                          Already have an account? Sign in with Email →
+                        </Link>
+                      </div>
                     </div>
 
-                    <div className="w-full sm:w-64">
+                    <div className="w-full sm:w-64 shrink-0">
                       <GoogleAuthButton
                         compact={true}
                         label="Continue with Google"

@@ -93,7 +93,7 @@ export default function AdminUsers() {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Permanently delete this customer account and remove all associated Cloudinary avatars?")) return;
+    if (!window.confirm("Permanently delete this customer account?")) return;
     try {
       await axios.delete(`/api/v8/admin/users/${userId}`);
       toast.success("Customer removed");
@@ -107,146 +107,147 @@ export default function AdminUsers() {
   return (
     <div className="pb-12 space-y-6">
 
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Users size={14} className="text-[#d4af37]" />
-            <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37]">
-              Customer CRM (`/api/v8/admin/users`)
+            <span className="px-2.5 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-mono font-bold uppercase rounded-md">
+              Customer CRM Directory
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Customer Directory & Lifetime Value
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Monitor customer spend, order history, and account verification status
+          <p className="text-xs text-slate-500 mt-1">
+            Monitor customer repeat purchase rates, total spend, and contact records
           </p>
         </div>
       </div>
 
-      {/* ── Search Bar ── */}
+      {/* Search Bar */}
       <div className="relative">
-        <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+        <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by customer name, email, or contact number..."
-          className="w-full bg-[#0c0818] border border-[#2e2646] pl-11 pr-10 py-3 rounded-xl text-white text-xs outline-none focus:border-[#7c3aed]"
+          className="w-full bg-white border border-slate-200 pl-11 pr-10 py-3 rounded-2xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500 shadow-xs transition-all"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+          <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
             <X size={14} />
           </button>
         )}
       </div>
 
-      {/* ── Customers Table ── */}
-      <div className="bg-[#0c0818] border border-[#2e2646] rounded-2xl overflow-hidden shadow-lg min-h-[300px]">
+      {/* Customers Table */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs min-h-[300px]">
         {loading ? (
           <div className="py-20 flex items-center justify-center">
-            <BrandLoader size="md" theme="dark" text="CLOTHING DEN" subtitle="FETCHING CUSTOMER CRM..." />
+            <BrandLoader size="md" theme="light" text="CLOTHING DEN" subtitle="FETCHING CUSTOMER CRM..." />
           </div>
         ) : (
-          <table className="w-full">
-          <thead>
-            <tr className="border-b border-[#2e2646] bg-[#110d20]">
-              <th className="px-5 py-4 text-left text-[10px] font-mono uppercase tracking-widest text-gray-400">Customer</th>
-              <th className="px-5 py-4 text-left text-[10px] font-mono uppercase tracking-widest text-gray-400">Contact & Email</th>
-              <th className="px-5 py-4 text-left text-[10px] font-mono uppercase tracking-widest text-gray-400">Orders</th>
-              <th className="px-5 py-4 text-left text-[10px] font-mono uppercase tracking-widest text-gray-400">Lifetime Spend</th>
-              <th className="px-5 py-4 text-left text-[10px] font-mono uppercase tracking-widest text-gray-400">Verification</th>
-              <th className="px-5 py-4 text-right text-[10px] font-mono uppercase tracking-widest text-gray-400">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#1e1534]">
-            {users.map((u) => (
-              <tr key={u._id} className="hover:bg-[#160f28] transition-colors">
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#7c3aed]/20 text-[#a78bfa] flex items-center justify-center text-xs font-bold uppercase">
-                      {u.fullname?.[0] || "C"}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-white">{u.fullname}</p>
-                      <p className="text-[10px] text-gray-500 font-mono">Registered: {new Date(u.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-mono uppercase text-slate-500 tracking-wider">
+                <tr>
+                  <th className="px-5 py-3.5">Customer</th>
+                  <th className="px-4 py-3.5">Contact & Email</th>
+                  <th className="px-4 py-3.5">Orders</th>
+                  <th className="px-4 py-3.5">Lifetime Spend</th>
+                  <th className="px-4 py-3.5">Verification</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map((u) => (
+                  <tr key={u._id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center text-xs font-bold uppercase">
+                          {u.fullname?.[0] || "C"}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">{u.fullname}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">Registered: {new Date(u.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </td>
 
-                <td className="px-5 py-4 text-xs text-gray-400">
-                  <p className="text-white">{u.email}</p>
-                  <p className="text-[10px] text-gray-500 font-mono">{u.phone || "No phone added"}</p>
-                </td>
+                    <td className="px-4 py-4 text-xs">
+                      <p className="text-slate-900 font-medium">{u.email}</p>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{u.phone || "No phone added"}</p>
+                    </td>
 
-                <td className="px-5 py-4 text-xs font-bold text-white font-mono">
-                  {u.totalOrders ?? 1} Orders
-                </td>
+                    <td className="px-4 py-4 text-xs font-bold text-slate-900 font-mono">
+                      {u.totalOrders ?? 1} Orders
+                    </td>
 
-                <td className="px-5 py-4 text-xs font-bold text-[#d4af37] font-mono">
-                  PKR {(u.totalSpent || 4500).toLocaleString()}
-                </td>
+                    <td className="px-4 py-4 text-xs font-bold text-emerald-700 font-mono">
+                      PKR {(u.totalSpent || 4500).toLocaleString()}
+                    </td>
 
-                <td className="px-5 py-4">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                    u.isVerified !== false
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                  }`}>
-                    {u.isVerified !== false ? "VERIFIED" : "UNVERIFIED"}
-                  </span>
-                </td>
+                    <td className="px-4 py-4">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                        u.isVerified !== false
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
+                      }`}>
+                        {u.isVerified !== false ? "VERIFIED" : "UNVERIFIED"}
+                      </span>
+                    </td>
 
-                <td className="px-5 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => viewCustomerProfile(u._id)}
-                      className="p-1.5 bg-[#1e1534] hover:bg-[#7c3aed] text-gray-300 hover:text-white rounded-lg transition-colors"
-                      title="Inspect Customer Profile"
-                    >
-                      <Eye size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(u._id)}
-                      className="p-1.5 text-gray-500 hover:text-rose-400 transition-colors"
-                      title="Delete Customer"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => viewCustomerProfile(u._id)}
+                          className="p-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 rounded-lg transition-colors border border-slate-200"
+                          title="Inspect Customer Profile"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u._id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Delete Customer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* ── Customer Detail Modal (`/api/v8/admin/users/:userid`) ── */}
+      {/* Customer Detail Modal */}
       {selectedUserDetail && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0c0818] border border-[#2e2646] rounded-2xl max-w-lg w-full p-6 text-white space-y-4 shadow-2xl animate-in zoom-in-95">
-            <div className="flex justify-between items-start border-b border-[#2e2646] pb-3">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-7 text-slate-900 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-lg">{selectedUserDetail.fullname}</h3>
-                <p className="text-xs text-gray-400 font-mono">{selectedUserDetail.email}</p>
+                <h3 className="font-bold text-lg text-slate-900">{selectedUserDetail.fullname}</h3>
+                <p className="text-xs text-slate-500 font-mono">{selectedUserDetail.email}</p>
               </div>
-              <button onClick={() => setSelectedUserDetail(null)} className="text-gray-400 hover:text-white">✕</button>
+              <button onClick={() => setSelectedUserDetail(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100">✕</button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-[#110d20] p-3 rounded-xl border border-[#2e2646]">
-                <span className="text-gray-500 block text-[10px] uppercase font-mono">Total Orders</span>
-                <span className="text-base font-bold font-mono text-white">{selectedUserDetail.totalOrders ?? 1}</span>
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <span className="text-slate-500 block text-[10px] uppercase font-mono">Total Orders</span>
+                <span className="text-lg font-bold font-mono text-slate-900">{selectedUserDetail.totalOrders ?? 1}</span>
               </div>
-              <div className="bg-[#110d20] p-3 rounded-xl border border-[#2e2646]">
-                <span className="text-gray-500 block text-[10px] uppercase font-mono">Lifetime Spend</span>
-                <span className="text-base font-bold font-mono text-[#d4af37]">PKR {(selectedUserDetail.totalSpent || 4500).toLocaleString()}</span>
+              <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                <span className="text-emerald-800 block text-[10px] uppercase font-mono">Lifetime Spend</span>
+                <span className="text-lg font-bold font-mono text-emerald-800">PKR {(selectedUserDetail.totalSpent || 4500).toLocaleString()}</span>
               </div>
             </div>
 
-            <div className="text-xs space-y-2 text-gray-300">
+            <div className="text-xs space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700">
               <p><strong>Contact:</strong> {selectedUserDetail.phone || "Not provided"}</p>
               <p><strong>Joined:</strong> {new Date(selectedUserDetail.createdAt || Date.now()).toLocaleDateString()}</p>
               <p><strong>Status:</strong> {selectedUserDetail.isVerified !== false ? "Verified Customer" : "Unverified"}</p>
@@ -255,7 +256,7 @@ export default function AdminUsers() {
             <div className="pt-2">
               <button
                 onClick={() => setSelectedUserDetail(null)}
-                className="w-full py-2.5 bg-[#7c3aed] hover:bg-[#6d28d9] rounded-xl text-xs font-bold uppercase tracking-wider"
+                className="w-full py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all"
               >
                 Close Inspector
               </button>

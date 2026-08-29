@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { optimizeImage } from "../../utils/imageOptimizer";
 import BrandLoader from "../../components/BrandLoader";
+import SizeCalculatorModal from "../../components/SizeCalculatorModal";
 import toast from "react-hot-toast";
 
 export default function ProductDetailPage() {
@@ -23,15 +24,14 @@ export default function ProductDetailPage() {
   const { current: serverProduct, loading } = useSelector((s) => s.products);
   const { isAuthenticated } = useSelector((s) => s.auth);
 
-  // Fallback / find from local clothing list if not in server
-  const fallbackProduct = CLOTHING_PRODUCTS.find((p) => p._id === id) || CLOTHING_PRODUCTS[0];
-  const product = serverProduct || fallbackProduct;
+  const product = serverProduct;
 
   const [qty, setQty] = useState(1);
   const [selectedSize, setSelectedSize] = useState("M");
   const [selectedStitching, setSelectedStitching] = useState("Stitched");
   const [activeImg, setActiveImg] = useState(0);
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
+  const [fitCalculatorOpen, setFitCalculatorOpen] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
   const [reviews, setReviews] = useState([]);
@@ -41,26 +41,28 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     dispatch(fetchProduct(id));
-    axios.get(`/api/v7/review/${id}`)
-      .then((r) => setReviews(r.data.data || []))
-      .catch(() => {});
+    if (typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id)) {
+      axios.get(`/api/v7/review/${id}`)
+        .then((r) => setReviews(r.data.data || []))
+        .catch(() => {});
+    }
   }, [dispatch, id]);
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) {
-      toast.error("Please login to add to bag");
-      navigate("/login");
-      return;
-    }
-    const res = await dispatch(addToCart({ productId: product._id || id, quantity: qty }));
-    if (addToCart.fulfilled.match(res)) {
-      toast.success(`Added ${product.title} (${selectedSize}) to Bag`, {
-        icon: "🛍️",
-        style: { borderRadius: "12px", background: "#1a1a14", color: "#fff", fontSize: "13px" }
-      });
-    } else {
-      toast.error(res.payload || "Added to cart!");
-    }
+    if (!product) return;
+    const res = await dispatch(
+      addToCart({
+        productId: product._id || id,
+        quantity: qty,
+        product,
+        size: selectedSize,
+        stitching: selectedStitching,
+      })
+    );
+    toast.success(`Added ${product.title} (${selectedSize}) to Bag`, {
+      icon: "🛍️",
+      style: { borderRadius: "12px", background: "#1a1a14", color: "#fff", fontSize: "13px" },
+    });
   };
 
   const handleReviewImageSelect = (e) => {
@@ -96,7 +98,7 @@ export default function ProductDetailPage() {
           _id: `rev-${Date.now()}`,
           rating: reviewForm.rating,
           comment: reviewForm.comment,
-          user: { fullname: "Verified Customer" },
+          user: { fullname: "You" },
           createdAt: new Date().toISOString(),
         },
         ...prev,
@@ -108,26 +110,40 @@ export default function ProductDetailPage() {
     }
   };
 
+  if (loading || !product) {
+    if (loading) {
+      return (
+        <div className="min-h-[70vh] flex items-center justify-center bg-[#fafaf8]">
+          <BrandLoader size="lg" text="CLOTHING DEN" subtitle="LOADING COUTURE DETAILS..." />
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center bg-[#fafaf8] px-4 text-center">
+        <h2 className="font-serif text-2xl text-[#1a1a14] mb-2">Product Not Found</h2>
+        <p className="text-sm text-[#78786a] mb-6">The requested garment could not be found in our active inventory.</p>
+        <Link
+          to="/products"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#1a1a14] text-white text-xs font-semibold tracking-widest uppercase rounded-full hover:bg-black transition-all"
+        >
+          Explore All Apparel
+        </Link>
+      </div>
+    );
+  }
+
   const images = (product.images && product.images.length > 0)
     ? product.images
-    : fallbackProduct.images;
+    : [{ url: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1000&q=85" }];
 
-  const price = product.price || 4500;
+  const price = product.price || 0;
   const discountPrice = product.discountPrice;
-  const fabric = product.fabric || fallbackProduct.fabric;
-  const sizes = product.sizes || ["XS", "S", "M", "L", "XL"];
+  const fabric = product.fabric || "Pure Luxury Weave";
+  const sizes = product.sizes && product.sizes.length > 0 ? product.sizes : ["XS", "S", "M", "L", "XL"];
 
   const discount = discountPrice && discountPrice < price
     ? Math.round(((price - discountPrice) / price) * 100)
     : null;
-
-  if (loading && !product) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center bg-[#fafaf8]">
-        <BrandLoader size="lg" text="CLOTHING DEN" subtitle="LOADING COUTURE DETAILS..." />
-      </div>
-    );
-  }
 
   return (
     <div className="bg-[#fafaf8] min-h-screen py-6 sm:py-12">
@@ -267,13 +283,22 @@ export default function ProductDetailPage() {
                 <label className="text-xs font-bold uppercase tracking-[0.18em] text-[#141410]">
                   Select Size
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setSizeModalOpen(true)}
-                  className="text-xs font-semibold text-[#141410] hover:text-[#d4af37] underline flex items-center gap-1"
-                >
-                  <Ruler size={13} /> Size Guide
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFitCalculatorOpen(true)}
+                    className="text-xs font-bold text-[#d4af37] bg-[#141410] px-2.5 py-1 rounded-full flex items-center gap-1 hover:brightness-125 transition-all shadow-xs"
+                  >
+                    <Sparkles size={12} /> Find My Fit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSizeModalOpen(true)}
+                    className="text-xs font-semibold text-[#141410] hover:text-[#d4af37] underline flex items-center gap-1"
+                  >
+                    <Ruler size={13} /> Size Guide
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2.5">
@@ -346,13 +371,22 @@ export default function ProductDetailPage() {
                   Fabric Specifications & Description
                 </h3>
                 <p className="text-xs sm:text-sm text-[#555] leading-relaxed mb-3">
-                  {product.description || fallbackProduct.description}
+                  {product.description || "Expertly crafted Eastern luxury couture piece with intricate embroidery and premium finishing."}
                 </p>
-                <ul className="list-disc pl-4 text-xs text-[#666] space-y-1">
-                  {(product.details || fallbackProduct.details).map((d, i) => (
-                    <li key={i}>{d}</li>
-                  ))}
-                </ul>
+                {Array.isArray(product.details) && product.details.length > 0 && (
+                  <ul className="list-disc pl-4 text-xs text-[#666] space-y-1">
+                    {product.details.map((d, i) => (
+                      <li key={i}>{d}</li>
+                    ))}
+                  </ul>
+                )}
+                {(!product.details || product.details.length === 0) && (
+                  <ul className="list-disc pl-4 text-xs text-[#666] space-y-1">
+                    <li>Fabric: {fabric}</li>
+                    <li>Cut: Contemporary Eastern Silhouette</li>
+                    <li>Care: Dry clean recommended or gentle hand wash</li>
+                  </ul>
+                )}
               </div>
             </div>
           </div>
@@ -461,6 +495,15 @@ export default function ProductDetailPage() {
             </div>
           </div>
         )}
+
+        {/* ── Virtual Fitting Room & Fit Calculator Modal ── */}
+        <SizeCalculatorModal
+          isOpen={fitCalculatorOpen}
+          onClose={() => setFitCalculatorOpen(false)}
+          onSelectSize={(recommended) => setSelectedSize(recommended)}
+          productTitle={product.title}
+        />
+
       </div>
     </div>
   );

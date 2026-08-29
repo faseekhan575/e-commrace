@@ -35,22 +35,12 @@ export default function ProductsPage() {
     if (q) setSearch(q);
   }, [searchParams]);
 
-  // Combine products
+  // Live backend data from MongoDB
   const allProducts = useMemo(() => {
-    if (serverProducts && serverProducts.length > 0) {
-      return serverProducts.map((p, idx) => ({
-        ...p,
-        fabric: p.fabric || CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].fabric,
-        sizes: p.sizes || ["XS", "S", "M", "L", "XL"],
-        images: p.images && p.images.length > 0 ? p.images : CLOTHING_PRODUCTS[idx % CLOTHING_PRODUCTS.length].images,
-      }));
-    }
-    return CLOTHING_PRODUCTS;
+    return serverProducts || [];
   }, [serverProducts]);
 
-  const categories = (serverCategories && serverCategories.length > 0)
-    ? serverCategories
-    : CLOTHING_CATEGORIES;
+  const categories = serverCategories || [];
 
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
@@ -65,11 +55,38 @@ export default function ProductsPage() {
         if (!matchesTitle && !matchesFabric && !matchesTags && !matchesCat) return false;
       }
 
-      // Category
+      // Robust Category matching (supports string ID, populated object, slug, name, tags)
       if (selectedCategory) {
-        if (p.category?._id !== selectedCategory && p.category?.slug !== selectedCategory && !p.category?.name?.toLowerCase().includes(selectedCategory.toLowerCase())) {
-          return false;
-        }
+        const catQuery = selectedCategory.toLowerCase();
+        const targetCat = categories.find(
+          (c) => c._id === selectedCategory || c.slug === selectedCategory || c.name?.toLowerCase() === catQuery
+        );
+        const validMatchTokens = [
+          selectedCategory,
+          catQuery,
+          ...(targetCat ? [targetCat._id, targetCat.slug?.toLowerCase(), targetCat.name?.toLowerCase()] : [])
+        ].filter(Boolean);
+
+        const pCat = p.category;
+        const matchesCategory =
+          // Direct string match
+          (typeof pCat === "string" && (
+            validMatchTokens.includes(pCat) ||
+            validMatchTokens.includes(pCat.toLowerCase()) ||
+            pCat.toLowerCase().includes(catQuery)
+          )) ||
+          // Populated object match
+          (typeof pCat === "object" && pCat !== null && (
+            validMatchTokens.includes(pCat._id) ||
+            (pCat.slug && validMatchTokens.includes(pCat.slug.toLowerCase())) ||
+            (pCat.name && validMatchTokens.includes(pCat.name.toLowerCase())) ||
+            (pCat.name && pCat.name.toLowerCase().includes(catQuery))
+          )) ||
+          // Tags or fabric fallback matching
+          (p.tags && p.tags.some((t) => validMatchTokens.includes(t.toLowerCase()))) ||
+          (p.fabric && p.fabric.toLowerCase().includes(catQuery));
+
+        if (!matchesCategory) return false;
       }
 
       // Fabric
@@ -116,46 +133,75 @@ export default function ProductsPage() {
     <div className="bg-[#fafaf8] min-h-screen py-8 sm:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* ── Page Title & Breadcrumb ── */}
-        <div className="border-b border-[#e8e8e0] pb-6 mb-8">
-          <p className="text-xs text-[#78786a] uppercase tracking-[0.2em] mb-1.5">
-            <Link to="/" className="hover:text-black">Home</Link> / <span className="text-[#1a1a14] font-bold">Women & Eastern Couture</span>
-          </p>
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div>
-              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141410] tracking-tight">
-                {selectedCategory
-                  ? categories.find((c) => c._id === selectedCategory || c.slug === selectedCategory)?.name || "Clothing Collection"
-                  : "All Apparel & Collections"}
-              </h1>
-              <p className="text-xs text-[#78786a] mt-1">
-                Showing {filteredProducts.length} curated luxury designs
-              </p>
-            </div>
-
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-3">
+        {/* ── Horizontal Category Navigation Tabs / Pills Bar ── */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <h2 className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#78786a]">
+              Explore Collections & Edits
+            </h2>
+            {selectedCategory && (
               <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="lg:hidden flex items-center gap-2 px-4 py-2.5 bg-white border border-[#e8e8e0] text-xs font-bold uppercase tracking-wider rounded"
+                onClick={() => {
+                  setSelectedCategory("");
+                  setSearchParams({});
+                }}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
               >
-                <SlidersHorizontal size={14} /> Filters
+                Show All Collections <X size={12} />
               </button>
+            )}
+          </div>
 
-              <div className="flex items-center gap-2 bg-white border border-[#e8e8e0] rounded px-3 py-2">
-                <ArrowUpDown size={14} className="text-[#78786a]" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-transparent text-xs font-semibold text-[#141410] outline-none cursor-pointer"
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+            {/* All Collections Pill */}
+            <button
+              onClick={() => {
+                setSelectedCategory("");
+                setSearchParams({});
+              }}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all border ${
+                !selectedCategory
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-slate-400 hover:bg-slate-50"
+              }`}
+            >
+              All Collections ({allProducts.length})
+            </button>
+
+            {/* Individual Category Pills */}
+            {categories.map((cat) => {
+              const catId = cat._id || cat.slug;
+              const isSelected = selectedCategory === cat._id || selectedCategory === cat.slug || selectedCategory === cat.name;
+              const count = allProducts.filter((p) =>
+                p.category?._id === cat._id || p.category?.slug === cat.slug || p.category?.name === cat.name
+              ).length;
+
+              return (
+                <button
+                  key={cat._id || cat.name}
+                  onClick={() => {
+                    const nextCat = isSelected ? "" : (cat._id || cat.slug);
+                    setSelectedCategory(nextCat);
+                    if (nextCat) setSearchParams({ category: nextCat });
+                    else setSearchParams({});
+                  }}
+                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border ${
+                    isSelected
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-200"
+                      : "bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
+                  }`}
                 >
-                  <option value="featured">Featured / Newest</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Highest Rated</option>
-                </select>
-              </div>
-            </div>
+                  <span>{cat.name}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
