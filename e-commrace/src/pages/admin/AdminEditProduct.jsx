@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { updateProduct, fetchProduct, fetchCategories, setOptimisticHot } from "../../store/productsSlice";
-import { CLOTHING_PRODUCTS } from "../../data/clothingData";
+import { updateProduct, fetchProduct, fetchCategories } from "../../store/productsSlice";
+import { errorMessage } from "../../services/api";
 import { optimizeImage } from "../../utils/imageOptimizer";
 import {
   Upload, Plus, ChevronRight, CheckCircle,
@@ -10,6 +10,8 @@ import {
   Trash2, Image as ImageIcon, Sparkles, Check
 } from "lucide-react";
 import toast from "react-hot-toast";
+import ProductMetadataFields from "./ProductMetadataFields";
+import ProductOperations from "./ProductOperations";
 
 const STEPS = ["Details & Category", "Pricing & Size Curve", "Photoshoot & Hover Studio", "Review & Save"];
 
@@ -22,6 +24,8 @@ export default function AdminEditProduct() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const [managedProduct, setManagedProduct] = useState(null);
   const [errors, setErrors] = useState({});
 
   const [gallery, setGallery] = useState([]);
@@ -30,6 +34,7 @@ export default function AdminEditProduct() {
 
   const [form, setForm] = useState({
     title: "",
+    sku: "", costPrice: "", piecesCount: "1", customBadge: "", dispatchBadge: "",
     fabric: "Printed | Cambric",
     stitching: "Stitched",
     category: "",
@@ -45,28 +50,14 @@ export default function AdminEditProduct() {
     isActive: true,
   });
 
-  useEffect(() => {
-    dispatch(fetchCategories());
-    if (id) {
-      dispatch(fetchProduct(id))
-        .unwrap()
-        .then((p) => {
-          populateData(p);
-        })
-        .catch(() => {
-          const local = CLOTHING_PRODUCTS.find((p) => p._id === id || p.id === id);
-          if (local) populateData(local);
-        })
-        .finally(() => setFetching(false));
-    }
-  }, [dispatch, id]);
-
   const populateData = (p) => {
     if (!p) return;
+    setManagedProduct(p);
     setForm({
       title: p.title || "",
+      sku: p.sku || "", costPrice: p.costPrice ?? "", piecesCount: p.piecesCount ?? String(parseInt(p.productTypeTag, 10) || 1), customBadge: p.customBadge || "", dispatchBadge: p.dispatchBadge || "",
       fabric: p.fabric || "Printed | Cambric",
-      stitching: p.stitching || "Stitched",
+      stitching: p.stitchingType ? p.stitchingType === "unstitched" ? "Unstitched" : "Stitched" : p.stitching || (p.tags?.includes("unstitched") ? "Unstitched" : "Stitched"),
       category: p.category?._id || p.category || (categories[0]?._id || ""),
       price: p.price || "",
       discountPrice: p.discountPrice || "",
@@ -106,6 +97,19 @@ export default function AdminEditProduct() {
     }
     setGallery(imgs);
   };
+
+  useEffect(() => {
+    dispatch(fetchCategories());
+    if (id) {
+      dispatch(fetchProduct(id))
+        .unwrap()
+        .then((p) => {
+          populateData(p);
+        })
+        .catch((error) => setFetchError(errorMessage(error)))
+        .finally(() => setFetching(false));
+    }
+  }, [dispatch, id]);
 
   const set = (key, val) => {
     setForm((f) => ({ ...f, [key]: val }));
@@ -186,10 +190,12 @@ export default function AdminEditProduct() {
       if (!form.title.trim()) e.title = "Apparel title is required";
       if (!form.description.trim()) e.description = "Fabric description is required";
       if (!form.category) e.category = "Please select or create a category";
+      if (form.costPrice !== "" && (!Number.isFinite(Number(form.costPrice)) || Number(form.costPrice) < 0)) e.costPrice = "Cost price must be zero or more";
+      if (!Number.isInteger(Number(form.piecesCount)) || Number(form.piecesCount) < 1) e.piecesCount = "Enter a whole number of pieces";
     }
     if (targetStep === 1) {
       if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price in PKR required";
-      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock count required";
+      if (form.stock === "" || !Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) e.stock = "Valid stock count required";
       if (form.discountPrice && Number(form.discountPrice) >= Number(form.price))
         e.discountPrice = "Discount price must be less than regular price";
       if (!form.sizes || form.sizes.length === 0) e.sizes = "Please select at least one size";
@@ -209,13 +215,16 @@ export default function AdminEditProduct() {
   const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = async () => {
-    if (gallery.length === 0) { toast.error("Upload photos"); setStep(2); return; }
+    for (const section of [0, 1, 2]) { if (!validateStep(section)) { setStep(section); return; } }
     setLoading(true);
     try {
       const fd = new FormData();
       fd.append("title", form.title.trim());
+      for (const key of ["sku", "costPrice", "piecesCount", "customBadge", "dispatchBadge"]) if (form[key] !== "" && form[key] != null) fd.append(key, form[key]);
       fd.append("fabric", form.fabric);
       fd.append("stitching", form.stitching);
+      fd.append("stitchingType", form.stitching.toLowerCase());
+      fd.append("fabricType", form.fabric);
       fd.append("description", form.description.trim());
       fd.append("price", Number(form.price));
       if (form.discountPrice) fd.append("discountPrice", Number(form.discountPrice));
@@ -225,7 +234,8 @@ export default function AdminEditProduct() {
       fd.append("isFeatured", form.isFeatured);
       fd.append("isActive", form.isActive);
       if (form.sizes.length > 0) fd.append("sizes", form.sizes.join(","));
-      if (form.tags.length > 0) fd.append("tags", form.tags.join(","));
+      fd.append("tags", [...form.tags.filter((tag) => !["stitched", "unstitched"].includes(tag.toLowerCase())), form.stitching.toLowerCase()].join(","));
+      fd.append("productTypeTag", `${form.piecesCount || 1} Piece`);
 
       gallery.filter((g) => g.file).forEach((g) => fd.append("image", g.file));
       const urlImages = gallery.filter((g) => !g.file && g.url).map((g) => g.url);
@@ -234,31 +244,19 @@ export default function AdminEditProduct() {
         if (gallery.filter((g) => g.file).length === 0) fd.append("image", urlImages[0]);
       }
 
-      // Optimistic Redux sync
-      dispatch(setOptimisticHot({
-        id,
-        isHot: form.isHot,
-        isFeatured: form.isFeatured,
-        isActive: form.isActive,
-      }));
-
-      const res = await dispatch(updateProduct({ id, formData: fd }));
-      if (updateProduct.fulfilled.match(res)) {
-        toast.success("Product changes saved live! ✨");
-        navigate("/admin/products");
-      } else {
-        toast.success("Product updated! ✨");
-        navigate("/admin/products");
-      }
-    } catch {
-      toast.success("Product changes applied!");
-      navigate("/admin/products");
+      await dispatch(updateProduct({ id, formData: fd })).unwrap();
+      toast.success("Product changes saved");
+      navigate(`/admin/products?category=${form.category}`);
+    } catch (error) {
+      toast.error(errorMessage(error));
     } finally {
       setLoading(false);
     }
   };
 
   const selectedCategoryObj = categories.find((c) => c._id === form.category);
+
+  if (fetchError) return <div className="p-8 bg-white border rounded-xl" role="alert"><p>{fetchError}</p><Link to="/admin/products" className="underline">Back to products</Link></div>;
 
   if (fetching) {
     return (
@@ -324,7 +322,7 @@ export default function AdminEditProduct() {
                 </Link>
               </div>
               <select
-                value={form.category}
+                aria-label="category" value={form.category}
                 onChange={(e) => set("category", e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-semibold outline-none focus:border-indigo-500 transition-all"
               >
@@ -338,7 +336,7 @@ export default function AdminEditProduct() {
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Apparel Title *</label>
               <input
                 type="text"
-                value={form.title}
+                aria-label="title" value={form.title}
                 onChange={(e) => set("title", e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500"
               />
@@ -349,7 +347,7 @@ export default function AdminEditProduct() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fabric Type</label>
                 <select
-                  value={form.fabric}
+                  aria-label="fabric" value={form.fabric}
                   onChange={(e) => set("fabric", e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none"
                 >
@@ -366,7 +364,7 @@ export default function AdminEditProduct() {
                   onChange={(e) => set("stitching", e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none"
                 >
-                  {["Stitched", "Unstitched", "Semi-Stitched"].map((o) => (
+                  {["Stitched", "Unstitched"].map((o) => (
                     <option key={o} value={o}>{o}</option>
                   ))}
                 </select>
@@ -377,7 +375,7 @@ export default function AdminEditProduct() {
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Detailed Description *</label>
               <textarea
                 rows={3}
-                value={form.description}
+                aria-label="description" value={form.description}
                 onChange={(e) => set("description", e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500"
               />
@@ -456,6 +454,7 @@ export default function AdminEditProduct() {
         )}
 
         {/* ── Step 1: Pricing & Size Curve ── */}
+        {step === 0 && <ProductMetadataFields form={form} set={set} />}
         {step === 1 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -468,7 +467,7 @@ export default function AdminEditProduct() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Retail Price (PKR) *</label>
                 <input
                   type="number"
-                  value={form.price}
+                  aria-label="price" value={form.price}
                   onChange={(e) => set("price", e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none"
                 />
@@ -479,7 +478,7 @@ export default function AdminEditProduct() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Discount Price</label>
                 <input
                   type="number"
-                  value={form.discountPrice}
+                  aria-label="discountPrice" value={form.discountPrice}
                   onChange={(e) => set("discountPrice", e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none"
                 />
@@ -490,7 +489,7 @@ export default function AdminEditProduct() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Stock *</label>
                 <input
                   type="number"
-                  value={form.stock}
+                  aria-label="stock" value={form.stock}
                   onChange={(e) => set("stock", e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none"
                 />
@@ -501,7 +500,7 @@ export default function AdminEditProduct() {
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Available Size Curve *</label>
               <div className="flex gap-2 flex-wrap">
-                {["XS", "S", "M", "L", "XL", "Free Size"].map((sz) => (
+                {["XS", "S", "M", "L", "XL", "XXL", "Free Size"].map((sz) => (
                   <button
                     key={sz}
                     type="button"
@@ -711,6 +710,11 @@ export default function AdminEditProduct() {
           )}
         </div>
       </div>
+      <ProductOperations product={managedProduct} onUpdated={(product) => {
+        setManagedProduct(product);
+        setForm((current) => ({ ...current, stock: String(product.stock ?? 0) }));
+        setGallery((product.images || []).map((image, index) => ({ id: `img-exist-${index}`, url: image.url, file: null })));
+      }} />
     </div>
   );
 }

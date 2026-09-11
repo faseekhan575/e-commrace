@@ -2,7 +2,7 @@
 // LoginPage.jsx — Unified Vault Login (auto-detects role)
 // ============================================================
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, clearError } from "../../store/authSlice";
 import GoogleAuthButton from "../../components/GoogleAuthButton";
@@ -94,6 +94,8 @@ function FloatInput({ id, label, type = "text", value = "", onChange, required, 
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
   const { loading } = useSelector((s) => s.auth);
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
@@ -127,7 +129,7 @@ export default function LoginPage() {
         navigate("/admin", { replace: true });
       } else {
         toast.success("Welcome back!");
-        navigate("/", { replace: true });
+        navigate(from, { replace: true });
       }
     } else {
       setLocalError(result.payload || "Invalid credentials");
@@ -301,7 +303,7 @@ export default function LoginPage() {
                   const user = res?.user || res || {};
                   const role = user?.role || res?.role || "user";
                   const isAdmin = role === "admin" || role === "superadmin";
-                  navigate(isAdmin ? "/admin" : "/", { replace: true });
+                  navigate(isAdmin ? "/admin" : from, { replace: true });
                 }}
               />
             </div>
@@ -311,7 +313,7 @@ export default function LoginPage() {
           <div className="vl-a5 mt-8 pt-6 border-t border-[#f0f0e8]">
             <p className="text-[13px] text-[#a8a898] text-center">
               No account?{" "}
-              <Link to="/register" className="text-[#1a1a14] font-semibold hover:underline underline-offset-2">
+              <Link to="/register" state={location.state} className="text-[#1a1a14] font-semibold hover:underline underline-offset-2">
                 Create one
               </Link>
             </p>

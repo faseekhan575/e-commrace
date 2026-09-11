@@ -14,7 +14,7 @@ export default function SizeCalculatorModal({ isOpen, onClose, onSelectSize, pro
   const handleCalculate = (e) => {
     e.preventDefault();
     const bust = Number(bustInches) || 36;
-    let size = "M";
+    let size;
 
     if (bust <= 33) size = "XS";
     else if (bust <= 35) size = "S";

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { Sparkles, ArrowRight, Tag, ChevronDown } from "lucide-react";
 
@@ -144,9 +144,9 @@ export const MEGA_MENU_DATA = {
       {
         title: "Sale Highlights",
         links: [
-          { label: "Flat 40% Off Ready to Wear", url: "/products?search=sale" },
-          { label: "Flat 30% Off Unstitched Lawn", url: "/products?search=sale" },
-          { label: "Under PKR 4,000 Steals", url: "/products?sortBy=price-low" },
+          { label: "Flat 40% Off Ready to Wear", url: "/products?sale=true" },
+          { label: "Flat 30% Off Unstitched Lawn", url: "/products?sale=true" },
+          { label: "Under PKR 4,000 Steals", url: "/products?sort=price-asc&maxPrice=4000" },
           { label: "End of Season Clearance", url: "/products" },
         ],
       },
@@ -162,9 +162,18 @@ export const MEGA_MENU_DATA = {
 };
 
 export default function MegaMenu({ activeCategory, onClose }) {
-  if (!activeCategory || !MEGA_MENU_DATA[activeCategory]) return null;
-
-  const data = MEGA_MENU_DATA[activeCategory];
+  const categories = useSelector((state) => state.products.categories);
+  if (!activeCategory) return null;
+  const category = categories.find((item) => (item.slug || item._id) === activeCategory);
+  const data = activeCategory === "products" || category ? {
+    columns: [
+      { title: "Explore the collection", links: [{ label: "Shop all products", url: "/products" }, ...categories.map((item) => ({ label: item.name, url: `/products?category=${encodeURIComponent(item.slug || item._id)}` }))] },
+      { title: "Find your edit", links: [{ label: "New arrivals", url: "/products?sort=newest" }, { label: "Best sellers", url: "/products?sort=popular" }, { label: "Ready to wear", url: "/products?stitching=stitched" }, { label: "Unstitched", url: "/products?stitching=unstitched" }] },
+      { title: "Thoughtfully chosen", links: [{ label: "In stock now", url: "/products?inStock=true" }, { label: "Special offers", url: "/products?sale=true" }, { label: "Under PKR 10,000", url: "/products?maxPrice=10000" }] },
+    ],
+    featured: category?.image?.url ? { title: category.name, subtitle: category.description || category.subtitle, image: category.image.url, link: `/products?category=${encodeURIComponent(category.slug || category._id)}` } : null,
+  } : MEGA_MENU_DATA[activeCategory];
+  if (!data) return null;
 
   return (
     <div
@@ -175,7 +184,7 @@ export default function MegaMenu({ activeCategory, onClose }) {
         <div className="grid grid-cols-12 gap-8 items-start">
 
           {/* Links Columns */}
-          <div className="col-span-8 grid grid-cols-3 gap-6">
+          <div className={`${data.featured ? "col-span-8" : "col-span-12"} grid grid-cols-3 gap-6`}>
             {data.columns.map((col, idx) => (
               <div key={idx} className="space-y-3">
                 <h4 className="font-serif text-sm font-bold tracking-wider text-[#141410] uppercase border-b border-gray-100 pb-2">

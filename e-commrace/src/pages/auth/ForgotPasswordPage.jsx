@@ -1,78 +1,39 @@
-// ForgotPasswordPage.jsx
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "../../axiosConfig";
+import { ArrowLeft, KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("email"); // email | otp
-  const [otp, setOtp] = useState("");
-
-  const sendOtp = async (e) => {
-    e.preventDefault();
+  const [error, setError] = useState("");
+  const sendOtp = async (event) => {
+    event.preventDefault();
     setLoading(true);
+    setError("");
+    const address = email.trim().toLowerCase();
     try {
-      await axios.post("/api/v1/auth/forgot-password", { email });
-      toast.success("OTP sent to your email");
-      setStep("otp");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to send OTP");
-    } finally { setLoading(false); }
+      await axios.post("/api/v1/auth/forgot-password", { email: address });
+      toast.success("Check your inbox for your reset code.");
+      navigate("/reset-password", { state: { email: address } });
+    } catch (failure) { setError(failure.response?.data?.message || "Unable to send the reset code. Please try again."); }
+    finally { setLoading(false); }
   };
-
-  const verifyOtp = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await axios.post("/api/v1/auth/verify-reset-otp", { email, otp });
-      toast.success("OTP verified! Set your new password.");
-      navigate("/reset-password", { state: { email } });
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid OTP");
-    } finally { setLoading(false); }
-  };
-
-  const inp = "w-full px-4 py-3 rounded-xl border border-[#e8e8e0] focus:border-[#1a1a14] text-sm outline-none transition-colors";
-
-  return (
-    <div className="min-h-screen bg-[#fafaf8] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white border border-[#e8e8e0] rounded-2xl p-8 shadow-sm">
-        <h1 className="font-display text-2xl font-700 text-[#1a1a14] mb-2">
-          {step === "email" ? "Forgot Password" : "Enter OTP"}
-        </h1>
-        <p className="text-sm text-[#78786a] mb-8">
-          {step === "email" ? "We'll send a reset code to your email." : `OTP sent to ${email}`}
-        </p>
-
-        {step === "email" ? (
-          <form onSubmit={sendOtp} className="space-y-4">
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com" className={inp} />
-            <button type="submit" disabled={loading}
-              className="w-full py-3 rounded-xl bg-[#1a1a14] hover:bg-[#3c3c30] text-white text-sm font-semibold transition-colors disabled:opacity-50">
-              {loading ? "Sending..." : "Send OTP"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verifyOtp} className="space-y-4">
-            <input type="text" maxLength={6} required value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
-              className="w-full px-4 py-4 text-center text-2xl tracking-[0.5em] font-mono rounded-xl border border-[#e8e8e0] focus:border-[#1a1a14] outline-none" />
-            <button type="submit" disabled={loading || otp.length !== 6}
-              className="w-full py-3 rounded-xl bg-[#1a1a14] hover:bg-[#3c3c30] text-white text-sm font-semibold transition-colors disabled:opacity-50">
-              {loading ? "Verifying..." : "Verify OTP"}
-            </button>
-          </form>
-        )}
-
-        <div className="mt-6 text-center">
-          <Link to="/login" className="text-sm text-[#78786a] hover:text-[#1a1a14] transition-colors">Back to login</Link>
-        </div>
-      </div>
+  return <div className="min-h-screen bg-[#fafaf8] grid place-items-center p-5">
+    <div className="w-full max-w-md rounded-3xl border border-stone-200 bg-white p-8 sm:p-10 shadow-sm">
+      <div className="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-stone-100"><KeyRound size={24} /></div>
+      <p className="mb-3 text-[10px] uppercase tracking-[0.22em] text-stone-500">Account recovery</p>
+      <h1 className="mb-3 font-serif text-3xl text-stone-900">Forgot your password?</h1>
+      <p className="mb-7 text-sm leading-relaxed text-stone-500">Enter your account email and we will send a code to reset your password.</p>
+      <form onSubmit={sendOtp} className="space-y-5">
+        <div><label htmlFor="reset-email" className="mb-2 block text-xs font-medium text-stone-700">Email address</label><input id="reset-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="w-full rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none focus:border-stone-800 focus:ring-2 focus:ring-stone-100" /></div>
+        {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-xs text-red-700">{error}</p>}
+        <button type="submit" disabled={loading} className="w-full rounded-xl bg-stone-900 py-3.5 text-sm font-medium text-white transition-colors hover:bg-stone-700 disabled:opacity-50">{loading ? "Sending code..." : "Send reset code"}</button>
+      </form>
+      <Link to="/login" className="mt-7 flex items-center justify-center gap-2 text-xs text-stone-500"><ArrowLeft size={13} />Back to sign in</Link>
     </div>
-  );
+  </div>;
 }
+

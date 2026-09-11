@@ -66,7 +66,7 @@ const bannerSlice = createSlice({
   name: "banners",
   initialState: {
     activeList: DEFAULT_BANNERS,
-    adminList: DEFAULT_BANNERS,
+    adminList: [],
     loading: false,
     error: null,
   },

@@ -42,19 +42,10 @@ export const fetchActiveSpotlights = createAsyncThunk(
   }
 );
 
-export const fetchAdminSpotlights = createAsyncThunk(
-  "spotlight/fetchAdmin",
-  async (params = {}, { rejectWithValue }) => {
-    try {
-      const res = await axios.get("/api/v11/spotlight/admin/all", { timeout: 8000 });
-      const data = res.data.data;
-      if (Array.isArray(data) && data.length > 0) return data;
-      return [DEFAULT_SPOTLIGHT];
-    } catch {
-      return [DEFAULT_SPOTLIGHT];
-    }
-  }
-);
+export const fetchAdminSpotlights = createAsyncThunk("spotlight/fetchAdmin", async (params = {}, { rejectWithValue }) => {
+  try { const response = await axios.get("/api/v11/spotlight/admin/all", { params }); const data = response.data.data; return Array.isArray(data) ? data : data?.spotlights || []; }
+  catch (error) { return rejectWithValue(error.response?.data?.message || "Unable to load spotlights"); }
+});
 
 export const createSpotlight = createAsyncThunk(
   "spotlight/create",
@@ -108,7 +99,7 @@ const spotlightSlice = createSlice({
   name: "spotlight",
   initialState: {
     activeSpotlight: DEFAULT_SPOTLIGHT,
-    adminList: [DEFAULT_SPOTLIGHT],
+    adminList: [],
     loading: false,
     error: null,
   },
@@ -127,8 +118,10 @@ const spotlightSlice = createSlice({
       .addCase(fetchActiveSpotlights.rejected, (state) => {
         state.loading = false;
       })
+      .addCase(fetchAdminSpotlights.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchAdminSpotlights.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
       .addCase(fetchAdminSpotlights.fulfilled, (state, action) => {
-        state.adminList = action.payload || [];
+        state.loading = false; state.adminList = action.payload || [];
       })
       .addCase(createSpotlight.fulfilled, (state, action) => {
         state.adminList.unshift(action.payload);

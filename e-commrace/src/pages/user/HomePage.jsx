@@ -5,6 +5,8 @@ import { fetchProducts, fetchCategories, fetchHotProducts } from "../../store/pr
 import { fetchActiveBanners } from "../../store/bannerSlice";
 import { fetchActiveSpotlights } from "../../store/spotlightSlice";
 import ProductCard from "../../components/ProductCard";
+import CategorySwipeSection from "../../components/CategorySwipeSection";
+import LuxuryMarqueeRibbon from "../../components/LuxuryMarqueeRibbon";
 import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES } from "../../data/clothingData";
 import { optimizeImage } from "../../utils/imageOptimizer";
 import {
@@ -149,48 +151,11 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* ── 2. Visual Categories Grid (Section 1 in User Screenshots) ── */}
-      <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <p className="text-xs font-mono uppercase tracking-[0.25em] text-[#78786a] mb-2">
-            The Atelier Collections
-          </p>
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141410] tracking-tight">
-            Curated by Wardrobe Category
-          </h2>
-          <p className="text-xs sm:text-sm text-[#78786a] mt-3">
-            From daily breathable cambrics to exquisite raw silk festive bridals
-          </p>
-        </div>
+      {/* ── Moving Infinite Luxury Marquee Ribbon ── */}
+      <LuxuryMarqueeRibbon />
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          {categories.slice(0, 4).map((cat) => (
-            <Link
-              key={cat._id}
-              to={`/products?category=${cat.slug || cat._id}`}
-              className="group block relative aspect-[3/4.2] overflow-hidden rounded-sm bg-[#f5f5f0] shadow-sm"
-            >
-              <img
-                src={optimizeImage(cat.image?.url || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80", { width: 600 })}
-                alt={cat.name}
-                loading="lazy"
-                className="w-full h-full object-cover object-top group-hover:scale-108 transition-transform duration-700 ease-out"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5 text-white">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-[#d4af37] mb-1">
-                  {cat.subtitle || "Pret & Unstitched"}
-                </span>
-                <h3 className="font-serif text-xl sm:text-2xl font-bold leading-tight group-hover:underline">
-                  {cat.name}
-                </h3>
-                <span className="text-[11px] uppercase tracking-wider text-white/90 mt-2 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Explore Designs <ArrowRight size={12} />
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* ── 2. Visual Categories Auto-Swiping Carousel (Section 1 in User Screenshots) ── */}
+      <CategorySwipeSection categories={categories} />
 
       {/* ── 3. Top Selling / Top Rated Apparel (Section 2 in User Screenshots - Clean & No Fabric Buttons) ── */}
       <section className="py-16 sm:py-20 bg-white border-y border-[#e8e8e0]">

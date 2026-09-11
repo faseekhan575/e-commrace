@@ -1,395 +1,106 @@
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams, Link } from "react-router-dom";
-import { fetchProducts, fetchCategories } from "../../store/productsSlice";
+import { ArrowDown, ArrowRight, ChevronDown, Grid2X2, Grid3X3, RotateCcw, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { fetchCatalog, fetchCategories, fetchFabrics, setCatalogFilters } from "../../store/productsSlice";
+import { filterCatalog, readFilters, SORTS } from "../../utils/catalog";
 import ProductCard from "../../components/ProductCard";
-import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES, FABRICS_LIST } from "../../data/clothingData";
-import {
-  Search, SlidersHorizontal, X, ArrowUpDown,
-  Filter, Grid, ChevronDown, Check
-} from "lucide-react";
+import ShopFilters from "../../components/ShopFilters";
+import "../../styles/shop.css";
 
 export default function ProductsPage() {
   const dispatch = useDispatch();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { list: serverProducts, categories: serverCategories, loading } = useSelector((s) => s.products);
-
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "");
-  const [selectedFabric, setSelectedFabric] = useState("");
-  const [selectedStitching, setSelectedStitching] = useState("");
-  const [selectedSize, setSelectedSize] = useState("");
-  const [sortBy, setSortBy] = useState("featured");
-  const [showFilters, setShowFilters] = useState(false);
-
+  const { onOpenCart } = useOutletContext() || {};
+  const [params, setParams] = useSearchParams();
+  const filters = useMemo(() => readFilters(params), [params]);
+  const { catalog, catalogLoading, catalogError, categories, categoriesError, fabrics: serverFabrics } = useSelector((state) => state.products);
+  const [searchDraft, setSearchDraft] = useState(filters.search);
+  const [columns, setColumns] = useState(3);
+  const [retry, setRetry] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const searchTimer = useRef(null);
+  const dialog = useRef(null);
+  const filterTrigger = useRef(null);
+  const update = useCallback((values, replace = false) => {
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      Object.entries(values).forEach(([key, value]) => value === "" || value === false || value == null ? next.delete(key) : next.set(key, String(value)));
+      next.delete("page");
+      return next;
+    }, { replace });
+  }, [setParams]);
+  const reset = () => { clearTimeout(searchTimer.current); setSearchDraft(""); setParams({}); };
+  useEffect(() => { setSearchDraft(filters.search); }, [filters.search]);
+  useEffect(() => () => clearTimeout(searchTimer.current), []);
+  useEffect(() => { dispatch(fetchCategories()); dispatch(fetchFabrics()); }, [dispatch]);
+  useEffect(() => { dispatch(setCatalogFilters(filters)); }, [dispatch, filters]);
+  const query = JSON.stringify({ category: filters.category, search: filters.search, fabric: filters.fabric, minPrice: filters.minPrice, maxPrice: filters.maxPrice, inStock: filters.inStock ? "true" : "", sort: filters.sort });
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, limit: 50 }));
-    dispatch(fetchCategories());
-  }, [dispatch]);
-
-  // Sync category param from URL
+    let request;
+    const timer = setTimeout(() => { request = dispatch(fetchCatalog(JSON.parse(query))); }, 180);
+    return () => { clearTimeout(timer); request?.abort(); };
+  }, [dispatch, query, retry]);
   useEffect(() => {
-    const cat = searchParams.get("category");
-    if (cat) setSelectedCategory(cat);
-    const q = searchParams.get("search");
-    if (q) setSearch(q);
-  }, [searchParams]);
-
-  // Live backend data from MongoDB
-  const allProducts = useMemo(() => {
-    return serverProducts || [];
-  }, [serverProducts]);
-
-  const categories = serverCategories || [];
-
-  // Filter & Sort Logic
-  const filteredProducts = useMemo(() => {
-    return allProducts.filter((p) => {
-      // Search
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchesTitle = p.title?.toLowerCase().includes(q);
-        const matchesFabric = p.fabric?.toLowerCase().includes(q);
-        const matchesTags = p.tags?.some((t) => t.toLowerCase().includes(q));
-        const matchesCat = p.category?.name?.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesFabric && !matchesTags && !matchesCat) return false;
-      }
-
-      // Robust Category matching (supports string ID, populated object, slug, name, tags)
-      if (selectedCategory) {
-        const catQuery = selectedCategory.toLowerCase();
-        const targetCat = categories.find(
-          (c) => c._id === selectedCategory || c.slug === selectedCategory || c.name?.toLowerCase() === catQuery
-        );
-        const validMatchTokens = [
-          selectedCategory,
-          catQuery,
-          ...(targetCat ? [targetCat._id, targetCat.slug?.toLowerCase(), targetCat.name?.toLowerCase()] : [])
-        ].filter(Boolean);
-
-        const pCat = p.category;
-        const matchesCategory =
-          // Direct string match
-          (typeof pCat === "string" && (
-            validMatchTokens.includes(pCat) ||
-            validMatchTokens.includes(pCat.toLowerCase()) ||
-            pCat.toLowerCase().includes(catQuery)
-          )) ||
-          // Populated object match
-          (typeof pCat === "object" && pCat !== null && (
-            validMatchTokens.includes(pCat._id) ||
-            (pCat.slug && validMatchTokens.includes(pCat.slug.toLowerCase())) ||
-            (pCat.name && validMatchTokens.includes(pCat.name.toLowerCase())) ||
-            (pCat.name && pCat.name.toLowerCase().includes(catQuery))
-          )) ||
-          // Tags or fabric fallback matching
-          (p.tags && p.tags.some((t) => validMatchTokens.includes(t.toLowerCase()))) ||
-          (p.fabric && p.fabric.toLowerCase().includes(catQuery));
-
-        if (!matchesCategory) return false;
-      }
-
-      // Fabric
-      if (selectedFabric) {
-        if (!p.fabric?.toLowerCase().includes(selectedFabric.toLowerCase()) && !p.tags?.includes(selectedFabric.toLowerCase())) {
-          return false;
-        }
-      }
-
-      // Stitching
-      if (selectedStitching) {
-        if (p.stitching !== selectedStitching && !p.stitching?.toLowerCase().includes(selectedStitching.toLowerCase())) {
-          return false;
-        }
-      }
-
-      // Size
-      if (selectedSize) {
-        if (!p.sizes?.includes(selectedSize)) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      const priceA = a.discountPrice || a.price;
-      const priceB = b.discountPrice || b.price;
-      if (sortBy === "price-low") return priceA - priceB;
-      if (sortBy === "price-high") return priceB - priceA;
-      if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
-      return 0; // featured
-    });
-  }, [allProducts, search, selectedCategory, selectedFabric, selectedStitching, selectedSize, sortBy]);
-
-  const clearAllFilters = () => {
-    setSearch("");
-    setSelectedCategory("");
-    setSelectedFabric("");
-    setSelectedStitching("");
-    setSelectedSize("");
-    setSortBy("featured");
-    setSearchParams({});
-  };
-
-  return (
-    <div className="bg-[#fafaf8] min-h-screen py-8 sm:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {/* ── Horizontal Category Navigation Tabs / Pills Bar ── */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between gap-4 mb-3">
-            <h2 className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-[#78786a]">
-              Explore Collections & Edits
-            </h2>
-            {selectedCategory && (
-              <button
-                onClick={() => {
-                  setSelectedCategory("");
-                  setSearchParams({});
-                }}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
-              >
-                Show All Collections <X size={12} />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
-            {/* All Collections Pill */}
-            <button
-              onClick={() => {
-                setSelectedCategory("");
-                setSearchParams({});
-              }}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                !selectedCategory
-                  ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                  : "bg-white text-slate-700 border-slate-200 hover:border-slate-400 hover:bg-slate-50"
-              }`}
-            >
-              All Collections ({allProducts.length})
-            </button>
-
-            {/* Individual Category Pills */}
-            {categories.map((cat) => {
-              const catId = cat._id || cat.slug;
-              const isSelected = selectedCategory === cat._id || selectedCategory === cat.slug || selectedCategory === cat.name;
-              const count = allProducts.filter((p) =>
-                p.category?._id === cat._id || p.category?.slug === cat.slug || p.category?.name === cat.name
-              ).length;
-
-              return (
-                <button
-                  key={cat._id || cat.name}
-                  onClick={() => {
-                    const nextCat = isSelected ? "" : (cat._id || cat.slug);
-                    setSelectedCategory(nextCat);
-                    if (nextCat) setSearchParams({ category: nextCat });
-                    else setSearchParams({});
-                  }}
-                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                    isSelected
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-200"
-                      : "bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
-                  }`}
-                >
-                  <span>{cat.name}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Main Layout: Sidebar Filters + Products Grid ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-
-          {/* ── Left Sidebar Filters (Desktop + Mobile Modal) ── */}
-          <aside
-            className={`lg:block ${
-              showFilters
-                ? "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 flex justify-end"
-                : "hidden"
-            }`}
-          >
-            <div className={`bg-white lg:bg-transparent lg:border-0 border border-[#e8e8e0] p-6 lg:p-0 rounded-xl lg:rounded-none w-full max-w-xs lg:max-w-none h-full lg:h-auto overflow-y-auto ${
-              showFilters ? "shadow-2xl" : ""
-            }`}>
-              {/* Header on mobile */}
-              <div className="flex items-center justify-between lg:hidden mb-6 pb-3 border-b border-gray-100">
-                <span className="font-bold text-sm uppercase tracking-wider">Refine By</span>
-                <button onClick={() => setShowFilters(false)} className="p-1">
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Search in sidebar */}
-              <div className="mb-6">
-                <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-[#78786a] mb-2">
-                  Search Styles
-                </label>
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a8a898]" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="E.g. Kurta, Lilac, Lawn..."
-                    className="w-full pl-9 pr-3 py-2 bg-white border border-[#e8e8e0] rounded text-xs outline-none focus:border-black"
-                  />
-                  {search && (
-                    <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Categories */}
-              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
-                  Category
-                </h3>
-                <div className="space-y-1.5 text-xs">
-                  <button
-                    onClick={() => setSelectedCategory("")}
-                    className={`w-full text-left py-1.5 px-2 rounded transition-colors flex items-center justify-between ${
-                      !selectedCategory ? "bg-[#141410] text-white font-bold" : "text-[#78786a] hover:text-black hover:bg-gray-100"
-                    }`}
-                  >
-                    <span>All Categories</span>
-                    <span>{allProducts.length}</span>
-                  </button>
-                  {categories.map((c) => {
-                    const count = allProducts.filter((p) => p.category?._id === c._id || p.category?.name === c.name).length;
-                    return (
-                      <button
-                        key={c._id}
-                        onClick={() => setSelectedCategory(selectedCategory === c._id ? "" : c._id)}
-                        className={`w-full text-left py-1.5 px-2 rounded transition-colors flex items-center justify-between ${
-                          selectedCategory === c._id ? "bg-[#141410] text-white font-bold" : "text-[#78786a] hover:text-black hover:bg-gray-100"
-                        }`}
-                      >
-                        <span>{c.name}</span>
-                        <span className="text-[10px] opacity-75">{count || 5}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Fabric Type */}
-              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
-                  Fabric
-                </h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {FABRICS_LIST.map((fab) => (
-                    <button
-                      key={fab.tag}
-                      onClick={() => setSelectedFabric(selectedFabric === fab.tag ? "" : fab.tag)}
-                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFabric === fab.tag
-                          ? "bg-[#141410] text-white border-black font-bold"
-                          : "border-[#e8e8e0] text-[#78786a] hover:border-black bg-white"
-                      }`}
-                    >
-                      {fab.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Stitching Type */}
-              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
-                  Stitching
-                </h3>
-                <div className="space-y-1.5 text-xs">
-                  {["Stitched", "Unstitched"].map((type) => (
-                    <label
-                      key={type}
-                      className="flex items-center gap-2.5 py-1 text-[#555] cursor-pointer hover:text-black"
-                    >
-                      <input
-                        type="radio"
-                        name="stitching"
-                        checked={selectedStitching === type}
-                        onChange={() => setSelectedStitching(selectedStitching === type ? "" : type)}
-                        className="accent-black"
-                      />
-                      <span>{type === "Stitched" ? "Ready to Wear (Stitched)" : "Unstitched Fabric Piece"}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Size Selector */}
-              <div className="mb-6 pb-6 border-b border-[#e8e8e0]">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-[#141410] mb-3">
-                  Size
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {["XS", "S", "M", "L", "XL"].map((sz) => (
-                    <button
-                      key={sz}
-                      onClick={() => setSelectedSize(selectedSize === sz ? "" : sz)}
-                      className={`w-9 h-9 rounded text-xs font-bold border transition-colors ${
-                        selectedSize === sz
-                          ? "bg-[#141410] text-white border-black"
-                          : "bg-white border-[#e8e8e0] text-[#141410] hover:border-black"
-                      }`}
-                    >
-                      {sz}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Clear All Filters Button */}
-              {(selectedCategory || selectedFabric || selectedStitching || selectedSize || search) && (
-                <button
-                  onClick={clearAllFilters}
-                  className="w-full py-2.5 bg-rose-50 text-rose-700 text-xs font-bold uppercase tracking-wider rounded border border-rose-200 hover:bg-rose-100 transition-colors"
-                >
-                  Clear All Filters
-                </button>
-              )}
-            </div>
-          </aside>
-
-          {/* ── Right Products Grid ── */}
-          <div className="lg:col-span-3">
-            {filteredProducts.length === 0 ? (
-              <div className="bg-white border border-[#e8e8e0] p-12 text-center rounded-sm">
-                <div className="w-16 h-16 rounded-full bg-[#f5f5f0] flex items-center justify-center mx-auto mb-4 text-[#8e8e7e]">
-                  <Search size={28} />
-                </div>
-                <h3 className="font-serif text-2xl font-bold text-[#141410] mb-2">No matching outfits found</h3>
-                <p className="text-xs text-[#78786a] max-w-sm mx-auto mb-6">
-                  Try clearing some filter criteria or searching for general fabrics like "Lawn", "Cambric", or "Silk".
-                </p>
-                <button
-                  onClick={clearAllFilters}
-                  className="px-6 py-2.5 bg-[#141410] text-white text-xs font-bold uppercase tracking-widest rounded"
-                >
-                  Reset Filters
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                {filteredProducts.map((product, idx) => (
-                  <ProductCard key={product._id || idx} product={product} index={idx} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+    const refresh = () => setRetry((value) => value + 1);
+    window.addEventListener("commerce:low_stock", refresh);
+    return () => window.removeEventListener("commerce:low_stock", refresh);
+  }, []);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.current?.focus();
+    const keydown = (event) => {
+      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key !== "Tab") return;
+      const nodes = [...(dialog.current?.querySelectorAll('button, input, select, summary, [tabindex="0"]') || [])].filter((node) => !node.disabled && node.getClientRects().length);
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", keydown);
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener("keydown", keydown); filterTrigger.current?.focus(); };
+  }, [mobileOpen]);
+  const matchingProducts = useMemo(() => filterCatalog(catalog, filters, categories), [catalog, filters, categories]);
+  const fabrics = useMemo(() => [...new Set([...serverFabrics, ...catalog.flatMap((product) => [product.fabricType || product.fabric]).filter(Boolean)])].sort(), [serverFabrics, catalog]);
+  const category = categories.find((item) => [item._id, item.slug].includes(filters.category));
+  const active = [
+    ...(filters.search ? [{ label: `Search: ${filters.search}`, clear: { search: "" } }] : []),
+    ...(filters.category ? [{ label: category?.name || filters.category, clear: { category: "" } }] : []),
+    ...(filters.fabric ? [{ label: filters.fabric, clear: { fabric: "" } }] : []),
+    ...filters.sizes.map((size) => ({ label: `Size ${size}`, clear: { sizes: filters.sizes.filter((value) => value !== size).join(","), size: "" } })),
+    ...(filters.stitching ? [{ label: filters.stitching === "stitched" ? "Ready to wear" : "Unstitched", clear: { stitching: "" } }] : []),
+    ...(filters.minPrice || filters.maxPrice ? [{ label: `PKR ${Number(filters.minPrice || 0).toLocaleString()} - ${filters.maxPrice ? Number(filters.maxPrice).toLocaleString() : "any"}`, clear: { minPrice: "", maxPrice: "" } }] : []),
+    ...(filters.inStock ? [{ label: "In stock", clear: { inStock: "" } }] : []),
+    ...(filters.sale ? [{ label: "Special offers", clear: { sale: "" } }] : []),
+  ];
+  const filterProps = { filters, update, categories, fabrics, categoriesError, retryCategories: () => dispatch(fetchCategories()), reset };
+  const invalidPrice = filters.minPrice && filters.maxPrice && Number(filters.minPrice) > Number(filters.maxPrice);
+  return <main className="shop-page">
+    <div className="shop-container">
+      <nav className="shop-breadcrumb" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span>Collections</span><span>/</span><strong>{category?.name || "All products"}</strong></nav>
+      <header className="shop-heading">
+        <div><p className="shop-eyebrow"><span /> THE CLOTHING DEN EDIT</p><h1>{category?.name || "An everyday kind of"}{!category && <em> extraordinary.</em>}</h1><p className="shop-intro">{category?.description || "Beautiful fabrics. Thoughtful details. Discover pieces made to be part of your story."}</p></div>
+        <div className="shop-heading-note"><Sparkles size={21} strokeWidth={1} /><span>Wear what<br /><em>feels like you.</em></span><a href="#shop-results" aria-label="Browse the collection"><ArrowDown size={18} /></a></div>
+      </header>
+      <div className="shop-collection-tabs" aria-label="Browse collections"><button className={!filters.category ? "selected" : ""} onClick={() => update({ category: "" })}>All products</button>{categories.map((item) => <button key={item._id || item.slug} className={[item._id, item.slug].includes(filters.category) ? "selected" : ""} onClick={() => update({ category: item.slug || item._id })}>{item.name}<ArrowRight size={13} /></button>)}</div>
+      <section className="shop-toolbar" aria-label="Catalog controls">
+        <div className="shop-search"><Search size={17} /><input aria-label="Search products" placeholder="Find your next favourite..." value={searchDraft} onChange={(event) => { const value = event.target.value; setSearchDraft(value); clearTimeout(searchTimer.current); searchTimer.current = setTimeout(() => update({ search: value.trim() }, true), 300); }} />{searchDraft && <button aria-label="Clear search" onClick={() => { clearTimeout(searchTimer.current); setSearchDraft(""); update({ search: "" }); }}><X size={15} /></button>}</div>
+        <label className="shop-select"><span className="sr-only">Category</span><select aria-label="Category" value={category?.slug || category?._id || filters.category} onChange={(event) => update({ category: event.target.value })}><option value="">All categories</option>{filters.category && !category && <option value={filters.category}>{filters.category}</option>}{categories.map((item) => <option key={item._id || item.slug} value={item.slug || item._id}>{item.name}</option>)}</select><ChevronDown size={13} /></label>
+        <label className="shop-select shop-sort"><span>Sort by</span><select aria-label="Sort products" value={filters.sort} onChange={(event) => update({ sort: event.target.value })}>{Object.entries(SORTS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={13} /></label>
+        <div className="shop-grid-toggle" aria-label="Grid layout"><button aria-label="Two column grid" aria-pressed={columns === 2} onClick={() => setColumns(2)}><Grid2X2 size={18} /></button><button aria-label="Three column grid" aria-pressed={columns === 3} onClick={() => setColumns(3)}><Grid3X3 size={18} /></button></div>
+      </section>
+      <div className="shop-layout">
+        <aside className="shop-desktop-filters"><ShopFilters {...filterProps} /></aside>
+        <section className="shop-results" id="shop-results" aria-busy={catalogLoading}>
+          <div className="shop-results-heading"><p aria-live="polite">{catalogLoading ? "Finding your favourites..." : catalogError ? "Collection unavailable" : <><strong>{matchingProducts.length}</strong> {matchingProducts.length === 1 ? "piece" : "pieces"} to discover</>}</p><button ref={filterTrigger} className="shop-mobile-filter-trigger" onClick={() => setMobileOpen(true)}><SlidersHorizontal size={15} /> Filters {active.length > 0 && <span>{active.length}</span>}</button><span className="shop-curated-note">A wardrobe, thoughtfully chosen.</span></div>
+          {active.length > 0 && <div className="shop-active-filters">{active.map((filter) => <button key={filter.label} onClick={() => update(filter.clear)} aria-label={`Remove ${filter.label} filter`}>{filter.label}<X size={12} /></button>)}<button className="shop-clear-all" onClick={reset}>Clear all</button></div>}
+          {catalogLoading ? <div className={`shop-product-grid columns-${columns}`}>{Array.from({ length: 6 }, (_, index) => <div className="shop-skeleton" key={index}><div /><span /><span /></div>)}</div> : catalogError ? <div className="shop-empty" role="alert"><RotateCcw size={32} strokeWidth={1} /><h2>Let us try that again.</h2><p>{catalogError}</p><button className="shop-primary-button" onClick={() => setRetry((value) => value + 1)}>Reload collection <RotateCcw size={14} /></button></div> : !matchingProducts.length || invalidPrice ? <div className="shop-empty"><Search size={32} strokeWidth={1} /><span className="shop-eyebrow">A FRESH PERSPECTIVE</span><h2>A little room to explore.</h2><p>{invalidPrice ? "Adjust your price range so the minimum is below the maximum." : active.length ? "No pieces match this combination just yet. Try another fabric, size, or collection." : "Our next collection is on its way. Please check back soon."}</p>{active.length > 0 && <button className="shop-primary-button" onClick={reset}>Explore all products <ArrowRight size={15} /></button>}</div> : <div className={`shop-product-grid columns-${columns}`}>{matchingProducts.map((product, index) => <div className="shop-product-reveal" key={product._id || product.id} style={{ "--card-delay": `${Math.min(index % 12, 5) * 45}ms` }}><ProductCard product={product} index={index} onOpenCart={onOpenCart} /></div>)}</div>}
+          {!catalogLoading && !catalogError && matchingProducts.length > 0 && <div className="shop-endnote"><span /><p>You have explored all {matchingProducts.length} pieces.<br /><em>Your next favourite is waiting.</em></p><span /></div>}
+        </section>
       </div>
+      <footer className="shop-footer-note"><Sparkles size={16} strokeWidth={1} /><p>Made for moments. Chosen for you.</p><Link to="/contact">Need a little guidance? <ArrowRight size={14} /></Link></footer>
     </div>
-  );
+    {mobileOpen && <div className="shop-filter-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) setMobileOpen(false); }}><div className="shop-filter-dialog" role="dialog" aria-modal="true" aria-label="Filter collection" tabIndex={-1} ref={dialog}><div className="shop-mobile-filter-header"><span>Your perfect edit</span><button aria-label="Close filters" onClick={() => setMobileOpen(false)}><X size={20} /></button></div><div className="shop-mobile-filter-body"><ShopFilters {...filterProps} /></div><div className="shop-mobile-filter-footer"><button className="shop-primary-button" onClick={() => setMobileOpen(false)}>{catalogLoading ? "View collection" : `Show ${matchingProducts.length} pieces`}<ArrowRight size={16} /></button></div></div></div>}
+  </main>;
 }

@@ -156,10 +156,10 @@ export default function AdminSpotlight() {
       }
 
       if (editingSpotlight) {
-        await dispatch(updateSpotlight({ id: editingSpotlight._id, formData: fd }));
+        await dispatch(updateSpotlight({ id: editingSpotlight._id, formData: fd })).unwrap();
         toast.success("Homepage Spotlight updated & live! ✨");
       } else {
-        await dispatch(createSpotlight(fd));
+        await dispatch(createSpotlight(fd)).unwrap();
         toast.success("New Editorial Spotlight published! 🎉");
       }
       setShowModal(false);
@@ -171,7 +171,7 @@ export default function AdminSpotlight() {
 
   const handleToggle = async (id) => {
     try {
-      await dispatch(toggleSpotlightActive(id));
+      await dispatch(toggleSpotlightActive(id)).unwrap();
       toast.success("Spotlight status updated!");
     } catch {
       toast.error("Failed to toggle spotlight");
@@ -181,7 +181,7 @@ export default function AdminSpotlight() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this editorial spotlight?")) return;
     try {
-      await dispatch(deleteSpotlight(id));
+      await dispatch(deleteSpotlight(id)).unwrap();
       toast.success("Spotlight deleted");
     } catch {
       toast.error("Failed to delete spotlight");

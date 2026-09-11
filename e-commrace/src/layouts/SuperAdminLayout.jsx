@@ -89,7 +89,7 @@ export default function SuperAdminLayout() {
   const isActive = (to, exact) =>
     exact ? location.pathname === to : location.pathname === to || (to !== "/superadmin" && location.pathname.startsWith(to));
 
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <>
       {/* Logo */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-[#1a1a1a]">
@@ -174,7 +174,7 @@ export default function SuperAdminLayout() {
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
         }}
       >
-        <SidebarContent />
+        {renderSidebarContent()}
       </aside>
 
       {/* Main — offset only on desktop when sidebar open */}

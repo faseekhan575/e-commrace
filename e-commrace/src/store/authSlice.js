@@ -1,174 +1,135 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+﻿import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../axiosConfig";
+import { getAccessToken, getSessionRevision, readSessionValue, resetSessionCredentials, setAccessToken, writeSessionValue } from "../utils/session";
 
-export const loginUser = createAsyncThunk("auth/login", async (credentials, { rejectWithValue }) => {
-  try {
-    const res = await axios.post("/api/v1/auth/login", credentials);
-    return res.data.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || "Login failed");
-  }
-});
+const message = (error, fallback) => error.response?.data?.message || error.message || fallback;
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
-export const loginWithGoogle = createAsyncThunk("auth/loginWithGoogle", async (googleData, { rejectWithValue }) => {
-  try {
-    const res = await axios.post("/api/v1/auth/google", googleData);
-    return res.data.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || "Google sign-in failed");
+function parseAuthData(payload) {
+  const user = payload?.user || payload;
+  if (!user || typeof user !== "object" || !(user._id || user.id) || !user.email) {
+    throw new Error("The server did not return a valid account. Please sign in again.");
   }
-});
+  return { user, role: user.role || "user", token: payload?.accessToken || payload?.token || null };
+}
+function authenticate(type, endpoint) {
+  return createAsyncThunk(type, async (data, { rejectWithValue }) => {
+    try {
+      if (endpoint === "google" && !(data?.credential || data?.idToken)) {
+        throw new Error("A verified Google credential is required. Please use email sign-in.");
+      }
+      const revision = getSessionRevision();
+      const body = data.email ? { ...data, email: normalizeEmail(data.email) } : data;
+      const response = await axios.post(`/api/v1/auth/${endpoint}`, body);
+      if (revision !== getSessionRevision()) throw new Error("Your session changed. Please try again.");
+      const parsed = parseAuthData(response.data.data);
+      if (parsed.user.isVerified === false) throw new Error("Please verify your email before signing in.");
+      setAccessToken(parsed.token);
+      return { user: parsed.user, accessToken: parsed.token };
+    } catch (error) { return rejectWithValue(message(error, "Unable to sign in")); }
+  });
+}
+export const loginUser = authenticate("auth/login", "login");
+export const loginWithGoogle = authenticate("auth/loginWithGoogle", "google");
+export const verifyOtp = authenticate("auth/verifyOtp", "verify-otp");
 
 export const registerUser = createAsyncThunk("auth/register", async (data, { rejectWithValue }) => {
   try {
-    const res = await axios.post("/api/v1/auth/register", data);
-    return res.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || "Registration failed");
-  }
+    const response = await axios.post("/api/v1/auth/register", { ...data, email: normalizeEmail(data.email), username: data.username.trim(), fullname: data.fullname.trim() });
+    return response.data;
+  } catch (error) { return rejectWithValue(message(error, "Registration failed")); }
 });
-
-export const verifyOtp = createAsyncThunk("auth/verifyOtp", async (data, { rejectWithValue }) => {
-  try {
-    const res = await axios.post("/api/v1/auth/verify-otp", data);
-    return res.data.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || "OTP verification failed");
-  }
+export const logoutUser = createAsyncThunk("auth/logout", async (_, { dispatch, rejectWithValue }) => {
+  try { await axios.post("/api/v1/auth/logout", {}, { skipAuthRefresh: true }); }
+  catch (error) { return rejectWithValue(message(error, "The server could not confirm sign-out. Your local session was cleared.")); }
+  finally { dispatch(clearSession()); }
 });
-
-export const logoutUser = createAsyncThunk("auth/logout", async (_, { rejectWithValue }) => {
-  try {
-    await axios.post("/api/v1/auth/logout");
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || "Logout failed");
-  }
-});
-
 export const fetchProfile = createAsyncThunk("auth/profile", async (_, { rejectWithValue }) => {
   try {
-    const res = await axios.get("/api/v2/user/profile");
-    return res.data.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || "Failed to fetch profile");
+    const response = await axios.get("/api/v1/auth/me");
+    const parsed = parseAuthData(response.data.data);
+    return { user: parsed.user, accessToken: getAccessToken() };
+  } catch (error) {
+    return rejectWithValue({ message: message(error, "Unable to check your session"), status: error.response?.status || 0 });
   }
-});
+}, { condition: (_, { getState }) => getState().auth.sessionStatus !== "checking" });
 
-// Extract user object and role reliably from backend responses
-const parseAuthData = (payload) => {
-  if (!payload) return { user: null, role: null, token: null };
-  const user = payload.user || payload;
-  const role = user?.role || payload?.role || "user";
-  const token = payload?.accessToken || payload?.token || user?.accessToken;
-  return { user, role, token };
-};
-
-const initialToken = localStorage.getItem("accessToken");
-const initialRole = localStorage.getItem("userRole");
-
+function clearAuthState(state) {
+  resetSessionCredentials();
+  state.user = null;
+  state.token = null;
+  state.role = null;
+  state.isAuthenticated = false;
+  state.initialized = true;
+  state.sessionStatus = "guest";
+  state.sessionError = null;
+  state.profileRequestId = null;
+  state.loading = false;
+  state.error = null;
+}
+function applyAuthenticated(state, payload) {
+  const { user, role, token } = parseAuthData(payload);
+  state.user = user;
+  state.token = token;
+  state.role = role;
+  state.isAuthenticated = true;
+  state.initialized = true;
+  state.sessionStatus = "authenticated";
+  state.sessionError = null;
+  state.loading = false;
+  state.error = null;
+  state.profileRequestId = null;
+  writeSessionValue("userRole", role);
+}
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    user: null,
-    role: initialRole || null,
-    isAuthenticated: !!initialToken,
-    loading: false,
-    error: null,
-    otpPending: false,
-    otpEmail: null,
+    user: null, token: getAccessToken(), role: null, isAuthenticated: false,
+    initialized: false, sessionStatus: "idle", sessionError: null, profileRequestId: null,
+    loading: false, error: null, otpPending: !!readSessionValue("otpEmail"), otpEmail: readSessionValue("otpEmail"),
   },
   reducers: {
     clearError: (state) => { state.error = null; },
+    clearSession: clearAuthState,
+    sessionTokenRefreshed: (state, action) => { state.token = action.payload || null; },
     setOtpPending: (state, action) => {
       state.otpPending = true;
-      state.otpEmail = action.payload;
+      state.otpEmail = normalizeEmail(action.payload);
+      writeSessionValue("otpEmail", state.otpEmail);
     },
-    clearOtpPending: (state) => {
-      state.otpPending = false;
-      state.otpEmail = null;
-    },
+    clearOtpPending: (state) => { state.otpPending = false; state.otpEmail = null; writeSessionValue("otpEmail", null); },
   },
   extraReducers: (builder) => {
+    [loginUser, loginWithGoogle, verifyOtp].forEach((thunk) => {
+      builder.addCase(thunk.pending, (state) => { state.loading = true; state.error = null; })
+        .addCase(thunk.fulfilled, (state, action) => {
+          applyAuthenticated(state, action.payload);
+          state.otpPending = false;
+          state.otpEmail = null;
+          writeSessionValue("otpEmail", null);
+        })
+        .addCase(thunk.rejected, (state, action) => { state.loading = false; state.error = action.payload || "Unable to sign in"; });
+    });
     builder
-      // LOGIN
-      .addCase(loginUser.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false;
-        const { user, role, token } = parseAuthData(action.payload);
-        state.user = user;
-        state.role = role;
-        state.isAuthenticated = true;
-        if (token) localStorage.setItem("accessToken", token);
-        if (role) localStorage.setItem("userRole", role);
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // GOOGLE LOGIN
-      .addCase(loginWithGoogle.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(loginWithGoogle.fulfilled, (state, action) => {
-        state.loading = false;
-        const { user, role, token } = parseAuthData(action.payload);
-        state.user = user;
-        state.role = role;
-        state.isAuthenticated = true;
-        if (token) localStorage.setItem("accessToken", token);
-        if (role) localStorage.setItem("userRole", role);
-      })
-      .addCase(loginWithGoogle.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // REGISTER
       .addCase(registerUser.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(registerUser.fulfilled, (state) => { state.loading = false; })
-      .addCase(registerUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // VERIFY OTP
-      .addCase(verifyOtp.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(verifyOtp.fulfilled, (state, action) => {
-        state.loading = false;
-        const { user, role, token } = parseAuthData(action.payload);
-        state.user = user;
-        state.role = role;
-        state.isAuthenticated = true;
-        state.otpPending = false;
-        state.otpEmail = null;
-        if (token) localStorage.setItem("accessToken", token);
-        if (role) localStorage.setItem("userRole", role);
-      })
-      .addCase(verifyOtp.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // LOGOUT
-      .addCase(logoutUser.fulfilled, (state) => {
-        state.user = null;
-        state.role = null;
-        state.isAuthenticated = false;
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("userRole");
-      })
-      // PROFILE
+      .addCase(registerUser.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      .addCase(fetchProfile.pending, (state, action) => { state.sessionStatus = "checking"; state.sessionError = null; state.profileRequestId = action.meta.requestId; })
       .addCase(fetchProfile.fulfilled, (state, action) => {
-        const { user, role } = parseAuthData(action.payload);
-        state.user = { ...state.user, ...user };
-        state.role = role;
-        state.isAuthenticated = true;
-        if (role) localStorage.setItem("userRole", role);
+        if (state.profileRequestId === action.meta.requestId) applyAuthenticated(state, action.payload);
       })
-      .addCase(fetchProfile.rejected, (state) => {
-        state.user = null;
-        state.role = null;
-        state.isAuthenticated = false;
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("userRole");
+      .addCase(fetchProfile.rejected, (state, action) => {
+        if (state.profileRequestId !== action.meta.requestId) return;
+        if ([400, 401, 403].includes(action.payload?.status)) clearAuthState(state);
+        else {
+          state.initialized = true;
+          state.sessionStatus = "error";
+          state.sessionError = action.payload?.message || "Unable to check your session. Please retry.";
+          state.profileRequestId = null;
+        }
       });
   },
 });
-
-export const { clearError, setOtpPending, clearOtpPending } = authSlice.actions;
+export const { clearError, clearSession, sessionTokenRefreshed, setOtpPending, clearOtpPending } = authSlice.actions;
 export default authSlice.reducer;
+

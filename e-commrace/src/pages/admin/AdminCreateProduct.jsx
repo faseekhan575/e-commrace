@@ -7,6 +7,7 @@ import {
   ArrowLeft, ShieldAlert, Flame, Star, Eye
 } from "lucide-react";
 import toast from "react-hot-toast";
+import ProductMetadataFields from "./ProductMetadataFields";
 
 const STEPS = ["Details & Category", "Pricing & Size Curve", "Photoshoot & Hover Studio", "Review & Publish"];
 
@@ -27,7 +28,8 @@ export default function AdminCreateProduct() {
 
   const [form, setForm] = useState({
     title: "",
-    fabric: "",
+    sku: "", costPrice: "", piecesCount: "1", customBadge: "", dispatchBadge: "",
+    fabric: "Cambric",
     stitching: "Stitched",
     category: searchParams.get("category") || "",
     price: "",
@@ -138,10 +140,12 @@ export default function AdminCreateProduct() {
       if (!form.title.trim()) e.title = "Apparel title is required";
       if (!form.description.trim()) e.description = "Fabric description is required";
       if (!form.category) e.category = "Please select or create a category";
+      if (form.costPrice !== "" && (!Number.isFinite(Number(form.costPrice)) || Number(form.costPrice) < 0)) e.costPrice = "Cost price must be zero or more";
+      if (!Number.isInteger(Number(form.piecesCount)) || Number(form.piecesCount) < 1) e.piecesCount = "Enter a whole number of pieces";
     }
     if (targetStep === 1) {
       if (!form.price || isNaN(form.price) || Number(form.price) <= 0) e.price = "Valid price in PKR required";
-      if (!form.stock || isNaN(form.stock) || Number(form.stock) < 0) e.stock = "Valid stock count required";
+      if (form.stock === "" || !Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) e.stock = "Valid stock count required";
       if (form.discountPrice && Number(form.discountPrice) >= Number(form.price))
         e.discountPrice = "Discount price must be less than regular price";
       if (!form.sizes || form.sizes.length === 0) e.sizes = "Please select at least one size";
@@ -161,13 +165,16 @@ export default function AdminCreateProduct() {
   const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = async () => {
-    if (gallery.length === 0) { toast.error("Upload photos"); setStep(2); return; }
+    for (const section of [0, 1, 2]) { if (!validateStep(section)) { setStep(section); return; } }
     setLoading(true);
     try {
       const fd = new FormData();
       fd.append("title", form.title.trim());
+      for (const key of ["sku", "costPrice", "piecesCount", "customBadge", "dispatchBadge"]) if (form[key] !== "" && form[key] != null) fd.append(key, form[key]);
       fd.append("fabric", form.fabric);
       fd.append("stitching", form.stitching);
+      fd.append("stitchingType", form.stitching.toLowerCase());
+      fd.append("fabricType", form.fabric);
       fd.append("description", form.description.trim());
       fd.append("price", Number(form.price));
       if (form.discountPrice) fd.append("discountPrice", Number(form.discountPrice));
@@ -177,7 +184,8 @@ export default function AdminCreateProduct() {
       fd.append("isFeatured", form.isFeatured);
       fd.append("isActive", form.isActive);
       if (form.sizes.length > 0) fd.append("sizes", form.sizes.join(","));
-      if (form.tags.length > 0) fd.append("tags", form.tags.join(","));
+      fd.append("tags", [...form.tags.filter((tag) => !["stitched", "unstitched"].includes(tag.toLowerCase())), form.stitching.toLowerCase()].join(","));
+      fd.append("productTypeTag", `${form.piecesCount || 1} Piece`);
 
       gallery.filter((g) => g.file).forEach((g) => fd.append("image", g.file));
       const urlImages = gallery.filter((g) => !g.file && g.url).map((g) => g.url);
@@ -234,21 +242,21 @@ export default function AdminCreateProduct() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3"><h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">1. Design, Category & Fabric</h2><span className="text-xs text-slate-500 font-mono">Step 1 of 4</span></div>
             <div>
               <div className="flex items-center justify-between mb-1.5"><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Target Wardrobe Category *</label><Link to="/admin/categories" target="_blank" className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"><Plus size={12} /> Create New</Link></div>
-              {categories.length === 0 ? <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3"><ShieldAlert size={20} className="text-amber-600" /><p className="text-xs text-amber-800 font-medium">No categories found! Create one first.</p></div> : <select value={form.category} onChange={(e) => set("category", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-semibold outline-none focus:border-indigo-500 transition-all">{categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}</select>}
+              {categories.length === 0 ? <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3"><ShieldAlert size={20} className="text-amber-600" /><p className="text-xs text-amber-800 font-medium">No categories found! Create one first.</p></div> : <select aria-label="category" value={form.category} onChange={(e) => set("category", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-semibold outline-none focus:border-indigo-500 transition-all">{categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}</select>}
               {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Apparel Title *</label>
-              <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500" />
+              <input type="text" aria-label="title" value={form.title} onChange={(e) => set("title", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500" />
               {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fabric Type</label><select value={form.fabric} onChange={(e) => set("fabric", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none">{["Printed | Cambric", "Embroidered | Luxury Lawn", "Jacquard | 2 Piece", "Luxury Pret | Raw Silk", "Chiffon | Festive Edit", "Pure Cotton | Pret"].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Stitching Type</label><select value={form.stitching} onChange={(e) => set("stitching", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none">{["Stitched", "Unstitched", "Semi-Stitched"].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Fabric Type</label><select aria-label="fabric" value={form.fabric} onChange={(e) => set("fabric", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none">{["Printed | Cambric", "Embroidered | Luxury Lawn", "Jacquard | 2 Piece", "Luxury Pret | Raw Silk", "Chiffon | Festive Edit", "Pure Cotton | Pret"].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Stitching Type</label><select value={form.stitching} onChange={(e) => set("stitching", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none">{["Stitched", "Unstitched"].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Detailed Description *</label>
-              <textarea rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500" />
+              <textarea rows={3} aria-label="description" value={form.description} onChange={(e) => set("description", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-slate-900 text-xs font-medium outline-none focus:border-indigo-500" />
               {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
             </div>
 
@@ -322,17 +330,18 @@ export default function AdminCreateProduct() {
             </div>
           </div>
         )}
+        {step === 0 && <ProductMetadataFields form={form} set={set} />}
         {step === 1 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3"><h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">2. Pricing, Inventory & Size Curve</h2><span className="text-xs text-slate-500 font-mono">Step 2 of 4</span></div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Retail Price (PKR) *</label><input type="number" value={form.price} onChange={(e) => set("price", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none" />{errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}</div>
-              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Discount Price</label><input type="number" value={form.discountPrice} onChange={(e) => set("discountPrice", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none" />{errors.discountPrice && <p className="text-xs text-red-500 mt-1">{errors.discountPrice}</p>}</div>
-              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Stock *</label><input type="number" value={form.stock} onChange={(e) => set("stock", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none" />{errors.stock && <p className="text-xs text-red-500 mt-1">{errors.stock}</p>}</div>
+              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Retail Price (PKR) *</label><input type="number" aria-label="price" value={form.price} onChange={(e) => set("price", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none" />{errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}</div>
+              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Discount Price</label><input type="number" aria-label="discountPrice" value={form.discountPrice} onChange={(e) => set("discountPrice", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none" />{errors.discountPrice && <p className="text-xs text-red-500 mt-1">{errors.discountPrice}</p>}</div>
+              <div><label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Stock *</label><input type="number" aria-label="stock" value={form.stock} onChange={(e) => set("stock", e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-mono font-bold outline-none" />{errors.stock && <p className="text-xs text-red-500 mt-1">{errors.stock}</p>}</div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Available Size Curve *</label>
-              <div className="flex gap-2 flex-wrap">{["XS", "S", "M", "L", "XL", "Free Size"].map((sz) => <button key={sz} type="button" onClick={() => toggleSize(sz)} className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${form.sizes.includes(sz) ? "bg-slate-900 text-white border-slate-900" : "bg-slate-50 text-slate-600 border-slate-200"}`}>{sz} {form.sizes.includes(sz) ? "✓" : ""}</button>)}</div>
+              <div className="flex gap-2 flex-wrap">{["XS", "S", "M", "L", "XL", "XXL", "Free Size"].map((sz) => <button key={sz} type="button" onClick={() => toggleSize(sz)} className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${form.sizes.includes(sz) ? "bg-slate-900 text-white border-slate-900" : "bg-slate-50 text-slate-600 border-slate-200"}`}>{sz} {form.sizes.includes(sz) ? "✓" : ""}</button>)}</div>
               {errors.sizes && <p className="text-xs text-red-500 mt-1">{errors.sizes}</p>}
             </div>
           </div>

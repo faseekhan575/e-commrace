@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../store/authSlice";
 import {
   LayoutDashboard, Package, ShoppingCart, Users, Sparkles,
   LogOut, Menu, X, ChevronRight, Store, ExternalLink,
-  Shield, Tag, Bell, PlusCircle, User, Download, Smartphone,
-  CheckCircle, Volume2, Layers
+  Tag, Bell, PlusCircle, User, Download, Smartphone,
+  CheckCircle, Volume2, Layers, Star
 } from "lucide-react";
 import BrandLogo from "../components/BrandLogo";
-import { io } from "socket.io-client";
+import { useCommerceRealtime } from "../components/CommerceRealtime";
 import toast from "react-hot-toast";
 import {
-  playOrderChime,
+
   requestPushPermission,
   showPushNotification,
   isRunningStandalone,
@@ -26,9 +26,9 @@ export default function AdminLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isDesktop, setIsDesktop] = useState(true);
-  const [notifications, setNotifications] = useState([]);
+  const { notifications, clearNotifications, connected: socketConnected } = useCommerceRealtime();
   const [notifOpen, setNotifOpen] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
+
 
   // PWA State
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
@@ -93,144 +93,40 @@ export default function AdminLayout() {
     }
   };
 
-  // Real-Time Socket Listener Suite
-  useEffect(() => {
-    let socket = null;
-    try {
-      const socketUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
-      socket = io(socketUrl, { withCredentials: true });
-
-      socket.on("connect", () => {
-        setSocketConnected(true);
-        socket.emit("join_admin_room");
-      });
-
-      socket.on("disconnect", () => {
-        setSocketConnected(false);
-      });
-
-      // 1. New Order Placement (Chime + Push + Toast)
-      socket.on("new_order", (data) => {
-        // Audio Chime
-        playOrderChime();
-
-        // Native Push Notification
-        showPushNotification("🛍️ New Order Received!", {
-          body: `PKR ${data.totalAmount?.toLocaleString()} by ${data.customerName || "Customer"} (${data.itemsCount || 1} items)`,
-          url: "/admin/orders",
-        });
-
-        const notif = {
-          id: `ord-${Date.now()}`,
-          type: "order",
-          title: "New Apparel Order Placed",
-          detail: `PKR ${data.totalAmount?.toLocaleString()} by ${data.customerName || "Customer"}`,
-          link: `/admin/orders`,
-          time: new Date().toLocaleTimeString(),
-        };
-        setNotifications((p) => [notif, ...p].slice(0, 30));
-
-        toast.custom(
-          <div className="bg-[#0c0818] border border-[#d4af37] text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top">
-            <Sparkles size={18} className="text-[#d4af37]" />
-            <div>
-              <p className="text-[10px] font-mono text-[#f7e08b] uppercase tracking-wider font-bold">New Order Received 🛍️</p>
-              <p className="text-xs font-bold text-white">PKR {data.totalAmount?.toLocaleString()} • {data.customerName || "Customer"}</p>
-            </div>
-          </div>,
-          { duration: 5000 }
-        );
-      });
-
-      // 2. Low Stock Warning
-      socket.on("low_stock", (data) => {
-        const notif = {
-          id: `stk-${Date.now()}`,
-          type: "stock",
-          title: "Low Inventory Alert",
-          detail: `${data.title} is down to ${data.stock} units!`,
-          link: `/admin/products`,
-          time: new Date().toLocaleTimeString(),
-        };
-        setNotifications((p) => [notif, ...p].slice(0, 30));
-        toast.error(`⚠️ Low Stock Alert: "${data.title}" has only ${data.stock} units left!`, {
-          style: { background: "#1c120c", color: "#f97316", border: "1px solid #f97316", fontSize: "12px" }
-        });
-      });
-
-      // 3. Customer Review
-      socket.on("new_review", (data) => {
-        const notif = {
-          id: `rev-${Date.now()}`,
-          type: "review",
-          title: `New ${data.rating}★ Customer Review`,
-          detail: `"${data.comment}" — ${data.customerName || "Verified Buyer"}`,
-          link: `/admin/products`,
-          time: new Date().toLocaleTimeString(),
-        };
-        setNotifications((p) => [notif, ...p].slice(0, 30));
-        toast.success(`⭐ New ${data.rating}★ Review from ${data.customerName || "Customer"}!`, {
-          style: { background: "#0c0818", color: "#facc15", border: "1px solid #eab308", fontSize: "12px" }
-        });
-      });
-
-      // 4. New Customer Registration
-      socket.on("new_user_registered", (data) => {
-        const notif = {
-          id: `usr-${Date.now()}`,
-          type: "user",
-          title: "New Customer Joined",
-          detail: `${data.fullname} (${data.email}) registered`,
-          link: `/admin/users`,
-          time: new Date().toLocaleTimeString(),
-        };
-        setNotifications((p) => [notif, ...p].slice(0, 30));
-        toast(`👤 New Shopper: ${data.fullname}`, {
-          icon: "✨",
-          style: { background: "#0c0818", color: "#c4b5fd", border: "1px solid #7c3aed", fontSize: "12px" }
-        });
-      });
-
-      return () => {
-        socket.disconnect();
-      };
-    } catch (e) {
-      console.warn("Socket init error:", e);
-    }
-  }, []);
-
   const handleLogout = async () => {
-    await dispatch(logoutUser());
+    const result = await dispatch(logoutUser());
+    if (logoutUser.rejected.match(result)) toast.error("Signed out locally. The server could not confirm sign-out.");
     navigate("/");
   };
 
   const navSections = [
     {
-      label: "Analytics & Executive",
+      label: "Workspace",
       items: [
-        { to: "/admin", label: "Executive Dashboard", icon: LayoutDashboard, exact: true },
+        { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
       ],
     },
     {
-      label: "Homepage & Catalog Sections",
+      label: "Catalog & content",
       items: [
-        { to: "/admin/categories", label: "1. Categories (Section 1)", icon: Tag },
-        { to: "/admin/products", label: "2. Top Selling & Apparel (Section 2)", icon: Package },
-        { to: "/admin/spotlight", label: "3. Editorial Spotlight (Section 3)", icon: Sparkles },
-        { to: "/admin/banners", label: "4. Hero Carousel Banners", icon: Layers },
-        { to: "/admin/products/create", label: "5. + Add New Product", icon: PlusCircle },
+        { to: "/admin/categories", label: "Categories", icon: Tag },
+        { to: "/admin/products", label: "Products & inventory", icon: Package },
+        { to: "/admin/spotlight", label: "Editorial spotlights", icon: Sparkles },
+        { to: "/admin/banners", label: "Hero banners", icon: Layers },
+        { to: "/admin/products/create", label: "Add product", icon: PlusCircle },
       ],
     },
     {
       label: "Fulfillment & Orders",
       items: [
-        { to: "/admin/orders", label: "Orders, COD & TCS Slips", icon: ShoppingCart },
+        { to: "/admin/orders", label: "Orders & fulfillment", icon: ShoppingCart },
       ],
     },
     {
       label: "Store CRM",
       items: [
-        { to: "/admin/users", label: "Customers CRM", icon: Users },
+        { to: "/admin/users", label: "Customers", icon: Users },
+        { to: "/admin/reviews", label: "Reviews & ratings", icon: Star },
         { to: "/admin/profile", label: "Admin Profile", icon: User },
       ],
     },
@@ -247,7 +143,7 @@ export default function AdminLayout() {
         <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Sidebar (Clean Crisp White Luxury Style) ── */}
+      {/* â”€â”€ Sidebar (Clean Crisp White Luxury Style) â”€â”€ */}
       <aside
         className="fixed top-0 left-0 h-full z-50 flex flex-col bg-white border-r border-slate-200 shadow-sm transition-transform duration-300"
         style={{
@@ -286,7 +182,7 @@ export default function AdminLayout() {
           <div className={`w-2 h-2 rounded-full ${socketConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} title={socketConnected ? "Real-time Sockets Connected" : "Sockets Disconnected"} />
         </div>
 
-        {/* ── Admin PWA Quick Action Card ── */}
+        {/* â”€â”€ Admin PWA Quick Action Card â”€â”€ */}
         <div className="px-3 pt-3">
           {isStandaloneApp ? (
             <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-[11px] font-mono font-medium">
@@ -363,7 +259,7 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* ── Main Workspace ── */}
+      {/* â”€â”€ Main Workspace â”€â”€ */}
       <div
         className="flex-1 flex flex-col min-w-0 transition-all duration-300"
         style={{ marginLeft: isDesktop && sidebarOpen ? 260 : 0 }}
@@ -392,7 +288,7 @@ export default function AdminLayout() {
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[10px] font-mono">
             <span className={`w-1.5 h-1.5 rounded-full ${socketConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
             <span className={socketConnected ? "text-emerald-700 font-semibold" : "text-red-600"}>
-              {socketConnected ? "Live Sockets Connected" : "Connecting..."}
+              {socketConnected ? "Live updates connected" : "Reconnecting updates..."}
             </span>
           </div>
 
@@ -435,13 +331,15 @@ export default function AdminLayout() {
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 p-3 max-h-96 overflow-y-auto animate-in zoom-in-95 text-slate-900">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 p-3 max-h-96 overflow-y-auto animate-in zoom-in-95 text-slate-900">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                     Live Store Notifications
                   </span>
                   <button
-                    onClick={() => setNotifications([])}
+                    onClick={clearNotifications}
                     className="text-[10px] text-slate-600 hover:text-slate-900 font-mono"
                   >
                     Clear All
@@ -468,8 +366,9 @@ export default function AdminLayout() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+        </div>
 
           {/* User Avatar */}
           <Link

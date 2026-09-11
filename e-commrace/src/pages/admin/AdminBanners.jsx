@@ -125,10 +125,10 @@ export default function AdminBanners() {
       }
 
       if (editingBanner) {
-        await dispatch(updateBanner({ id: editingBanner._id || editingBanner.id, formData: fd }));
+        await dispatch(updateBanner({ id: editingBanner._id || editingBanner.id, formData: fd })).unwrap();
         toast.success("Hero Banner updated successfully! ✨");
       } else {
-        await dispatch(createBanner(fd));
+        await dispatch(createBanner(fd)).unwrap();
         toast.success("New Hero Banner created & live! 🎉");
       }
       setShowModal(false);
@@ -140,7 +140,7 @@ export default function AdminBanners() {
 
   const handleToggle = async (id) => {
     try {
-      await dispatch(toggleBannerActive(id));
+      await dispatch(toggleBannerActive(id)).unwrap();
       toast.success("Banner visibility status updated!");
     } catch {
       toast.error("Failed to toggle banner");
@@ -150,7 +150,7 @@ export default function AdminBanners() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this promotional banner?")) return;
     try {
-      await dispatch(deleteBanner(id));
+      await dispatch(deleteBanner(id)).unwrap();
       toast.success("Banner deleted successfully");
     } catch {
       toast.error("Failed to delete banner");

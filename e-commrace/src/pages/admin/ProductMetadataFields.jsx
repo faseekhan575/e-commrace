@@ -1,0 +1,4 @@
+export default function ProductMetadataFields({ form, set }) {
+  const fields = [["sku", "SKU", "text"], ["costPrice", "Cost price (PKR)", "number"], ["piecesCount", "Number of pieces", "number"], ["customBadge", "Product badge", "text"], ["dispatchBadge", "Dispatch information", "text"]];
+  return <div className="grid sm:grid-cols-2 gap-4 border-t border-stone-100 pt-5">{fields.map(([key, label, type]) => <label key={key} className="text-xs font-medium text-stone-600">{label}<input aria-label={label} type={type} min={key === "piecesCount" ? "1" : "0"} step={type === "number" ? key === "piecesCount" ? "1" : "0.01" : undefined} value={form[key] ?? ""} onChange={(event) => set(key, event.target.value)} className="mt-2 w-full border border-stone-200 rounded-xl bg-stone-50 px-3 py-3 text-sm outline-none focus:border-stone-500" /></label>)}</div>;
+}

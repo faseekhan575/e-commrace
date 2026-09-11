@@ -4,6 +4,7 @@ import cartReducer from "./cartSlice";
 import productsReducer from "./productsSlice";
 import bannerReducer from "./bannerSlice";
 import spotlightReducer from "./spotlightSlice";
+import wishlistReducer from "./wishlistSlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,13 +13,14 @@ export const store = configureStore({
     products: productsReducer,
     banners: bannerReducer,
     spotlight: spotlightReducer,
+    wishlist: wishlistReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
       immutableCheck: false,
     }),
-  devTools: process.env.NODE_ENV !== "production", // Enable Redux DevTools in development
+  devTools: import.meta.env.DEV, // Enable Redux DevTools in development
 });
 
 export default store;

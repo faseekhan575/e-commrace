@@ -39,23 +39,3 @@ export const DEFAULT_BANNERS = [
     badge: "HOT SELLERS",
   },
 ];
-
-const STORAGE_KEY = "sapphire_store_banners_v1";
-
-export function getStoredBanners() {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (data) {
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (e) {}
-  return DEFAULT_BANNERS;
-}
-
-export function saveStoredBanners(banners) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(banners));
-    window.dispatchEvent(new Event("banners_updated"));
-  } catch (e) {}
-}

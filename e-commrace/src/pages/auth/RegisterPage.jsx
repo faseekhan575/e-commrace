@@ -2,7 +2,7 @@
 // RegisterPage.jsx — Premium Vault Registration
 // ============================================================
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser, clearError, setOtpPending } from "../../store/authSlice";
 import GoogleAuthButton from "../../components/GoogleAuthButton";
@@ -125,6 +125,8 @@ function Req({ met, label }) {
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
   const { loading, error } = useSelector((s) => s.auth);
   const [showPass, setShowPass] = useState(false);
   const [showReqs, setShowReqs] = useState(false);
@@ -353,7 +355,7 @@ export default function RegisterPage() {
               <GoogleAuthButton
                 label="Sign up with Google"
                 onSuccessCallback={(res) => {
-                  navigate("/");
+                  navigate(from, { replace: true });
                 }}
               />
             </div>
@@ -363,7 +365,7 @@ export default function RegisterPage() {
           <div className="vr-a6 mt-8 pt-6 border-t border-[#f0f0e8]">
             <p className="text-[13px] text-[#a8a898] text-center">
               Already a member?{" "}
-              <Link to="/login" className="text-[#1a1a14] font-semibold hover:underline underline-offset-2">
+              <Link to="/login" state={location.state} className="text-[#1a1a14] font-semibold hover:underline underline-offset-2">
                 Sign in
               </Link>
             </p>
