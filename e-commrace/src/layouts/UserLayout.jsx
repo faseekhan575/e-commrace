@@ -26,8 +26,8 @@ import toast from "react-hot-toast";
 const TOP_TICKER_MESSAGES = [
   "✨ FREE NATIONWIDE EXPRESS SHIPPING ON ALL ORDERS ABOVE PKR 5,000",
   "🌸 NEW ARRIVALS: FESTIVE LAWN & LUXURY PRET COLLECTION '26 LIVE NOW",
-  "💳 MULTI-PAYMENT: CASH ON DELIVERY, EASYPAISA, JAZZCASH, IBFT & CARDS ACCEPTED",
-  "👗 7-DAY EASY SIZE & STYLE EXCHANGES ACROSS ALL OUTLETS IN PAKISTAN",
+  "💳 MULTI-PAYMENT: CASH ON DELIVERY, PAYFAST, EASYPAISA, JAZZCASH & CARDS",
+  "🔄 7-DAY EASY SIZE & STYLE EXCHANGES ACROSS ALL OUTLETS IN PAKISTAN",
 ];
 
 export default function UserLayout() {
@@ -499,7 +499,7 @@ export default function UserLayout() {
                     Secure 256-Bit Checkout
                   </h4>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    Cash on Delivery & instant digital payments
+                    PayFast, COD & instant digital payments
                   </p>
                 </div>
               </div>
@@ -672,7 +672,7 @@ export default function UserLayout() {
 
                 <div className="pt-2">
                   <a
-                    href="https://wa.me/923000000000"
+                    href="https://wa.me/923278890579?text=hey%20i%20am%20dev%20of%20this%20website%20lets%20goo"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#25D366]/20 border border-[#25D366]/40 text-[#25D366] rounded-xs text-[11px] font-bold hover:bg-[#25D366]/30 transition-colors"
@@ -697,6 +697,7 @@ export default function UserLayout() {
                 </span>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <CODLogo className="h-7 scale-90" />
+                  <span className="px-2 py-1 bg-white/10 border border-white/20 rounded text-[10px] font-bold tracking-wider text-[#d4af37]">PAYFAST</span>
                   <EasypaisaLogo className="h-7 scale-90" />
                   <JazzCashLogo className="h-7 scale-90" />
                   <VisaLogo className="h-7 scale-90" />
@@ -719,30 +720,44 @@ export default function UserLayout() {
           </div>
         </div>
 
-        {/* 4. Copyright Bar */}
-        <div className="border-t border-white/10 py-5 bg-[#0a0a08] text-[11px] text-gray-500 font-mono">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        {/* 4. Copyright & Developer Attribution Bar */}
+        <div className="border-t border-white/10 py-5 bg-[#0a0a08] text-xs text-gray-400 font-mono">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
             <div>
-              © {new Date().getFullYear()} Clothing Den (Pvt.) Ltd. All Rights Reserved. Crafted with pride in Pakistan.
+              &copy; {new Date().getFullYear()} Clothing Den (Pvt.) Ltd. All Rights Reserved. Crafted with pride in Pakistan.
             </div>
-            <div className="flex items-center gap-4">
+
+            {/* Clickable Developer Attribution */}
+            <div>
+              <a
+                href="https://wa.me/923278890579?text=hey%20i%20am%20dev%20of%20this%20website%20lets%20goo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/15 text-[#d4af37] hover:text-white hover:border-[#d4af37] hover:bg-white/10 transition-all font-semibold shadow-xs"
+                title="Connect with developer on WhatsApp"
+              >
+                <span>by fasee developers +92 3278890579</span>
+              </a>
+            </div>
+
+            <div className="flex items-center gap-4 text-[11px] text-gray-400">
               <button
                 onClick={() => setActivePolicy("privacy")}
-                className="hover:text-gray-300 transition-colors"
+                className="hover:text-white transition-colors"
               >
                 Privacy Policy
               </button>
               <span>•</span>
               <button
                 onClick={() => setActivePolicy("terms")}
-                className="hover:text-gray-300 transition-colors"
+                className="hover:text-white transition-colors"
               >
                 Terms of Service
               </button>
               <span>•</span>
               <button
                 onClick={() => setActivePolicy("shipping")}
-                className="hover:text-gray-300 transition-colors"
+                className="hover:text-white transition-colors"
               >
                 Delivery Guide
               </button>
