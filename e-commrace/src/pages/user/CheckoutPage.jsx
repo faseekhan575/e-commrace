@@ -81,8 +81,7 @@ export default function CheckoutPage() {
   const invalidItems = items.some(
     (item) =>
       !item.product ||
-      item.quantity > availableStock(item.product, item.size) ||
-      item.guest
+      item.quantity > availableStock(item.product, item.size)
   );
 
   const updateField = (event) =>
@@ -120,10 +119,10 @@ export default function CheckoutPage() {
   const placeOrder = async (chosenPayment = selectedPayment) => {
     if (submittingRef.current || cartLoading) return;
     const validation = validate();
-    if (validation || !items.length || invalidItems || !isAuthenticated) {
+    if (validation || !items.length || invalidItems) {
       setSubmitError(
         validation ||
-          "Please review your shopping bag and sign in before placing an order."
+          "Please review your shopping bag before placing an order."
       );
       return;
     }
@@ -144,11 +143,25 @@ export default function CheckoutPage() {
         totalAmount: total,
         paymentMethod: chosenPayment === "payfast" ? "payfast" : "cod",
         shippingAddress: {
+          fullName: form.fullName.trim(),
+          recipientName: form.fullName.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
           street: form.street.trim(),
           city: form.city.trim(),
           state: form.state,
           country: "Pakistan",
           zip: form.zip.trim(),
+        },
+        customerName: form.fullName.trim(),
+        customerEmail: form.email.trim(),
+        customerPhone: form.phone.trim(),
+        recipientName: form.fullName.trim(),
+        recipientEmail: form.email.trim(),
+        recipientPhone: form.phone.trim(),
+        guestInfo: {
+          fullName: form.fullName.trim(),
+          email: form.email.trim(),
           phone: form.phone.trim(),
         },
         orderNotes: [
@@ -295,14 +308,6 @@ export default function CheckoutPage() {
       </div>
     );
 
-  if (!isAuthenticated)
-    return (
-      <Navigate
-        to="/login?redirect=%2Fcheckout"
-        replace
-        state={{ from: { pathname: "/checkout" } }}
-      />
-    );
   if (!items.length && !cartLoading) return <Navigate to="/cart" replace />;
 
   return (

@@ -3,9 +3,8 @@ import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../store/cartSlice";
 import { toggleWishlistItem } from "../store/wishlistSlice";
-import { Heart, ShoppingBag, Eye } from "lucide-react";
+import { Heart, ShoppingBag } from "lucide-react";
 import { optimizeImage } from "../utils/imageOptimizer";
-import QuickViewModal from "./QuickViewModal";
 import toast from "react-hot-toast";
 import {
   availableStock,
@@ -59,12 +58,10 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
       ? product.sizes
       : ["XS", "S", "M", "L", "XL"];
 
-  const [selectedSize, setSelectedSize] = useState(
+  const [selectedSize] = useState(
     firstAvailableSize(product) || sizes[0] || ""
   );
-  const [showSizePicker, setShowSizePicker] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const handleWishlist = (e) => {
@@ -89,13 +86,11 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
   const handleQuickAdd = async (e, sz) => {
     e.preventDefault();
     e.stopPropagation();
-    if (productColors(product).length) {
-      setQuickViewOpen(true);
-      return;
+    const chosenSize = sz || selectedSize || firstAvailableSize(product) || (sizes && sizes[0]) || "";
+    if (sizes && sizes.length && availableStock(product, chosenSize) < 1) {
+      const avail = firstAvailableSize(product);
+      if (!avail) return toast.error("This item is currently out of stock.");
     }
-    const chosenSize = sz || selectedSize;
-    if (availableStock(product, chosenSize) < 1)
-      return toast.error("This size is currently unavailable.");
     try {
       await dispatch(
         addToCart({
@@ -106,7 +101,7 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
           stitching: product?.stitching || "Stitched",
         })
       ).unwrap();
-      toast.success(`Added ${title} (${chosenSize}) to Bag`, {
+      toast.success(`Added ${title} to Bag`, {
         icon: "🛍️",
         style: {
           borderRadius: "10px",
@@ -115,8 +110,6 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
           fontSize: "12px",
         },
       });
-      setShowSizePicker(false);
-      if (onOpenCart) onOpenCart();
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -198,20 +191,6 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
                 }`}
               />
             </button>
-
-            {/* Quick View Button (Desktop) */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setQuickViewOpen(true);
-              }}
-              aria-label="Quick View"
-              className="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/90 backdrop-blur-sm items-center justify-center shadow-xs hover:bg-white hover:scale-110 active:scale-95 transition-all opacity-0 group-hover:opacity-100"
-            >
-              <Eye size={15} className="text-[#1a1a14]" />
-            </button>
           </div>
 
           {/* Quick Add To Bag Overlay on Card Hover */}
@@ -223,62 +202,14 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
                   : "opacity-0 translate-y-2 pointer-events-none"
               }`}
             >
-              {showSizePicker ? (
-                <div className="bg-white p-2 sm:p-2.5 rounded shadow-xl animate-in fade-in zoom-in-95 space-y-1.5">
-                  <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                    <span>Select Size to Add:</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowSizePicker(false);
-                      }}
-                      className="text-gray-400 hover:text-black font-bold px-1"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div className="flex gap-1 justify-center flex-wrap">
-                    {sizes.map((sz) => {
-                      const varStock = product?.sizeVariants?.find(
-                        (v) => v.size?.toUpperCase() === sz?.toUpperCase()
-                      );
-                      const szDisabled =
-                        varStock &&
-                        (varStock.stock <= 0 || varStock.isAvailable === false);
-
-                      return (
-                        <button
-                          key={sz}
-                          type="button"
-                          disabled={szDisabled}
-                          onClick={(e) => handleQuickAdd(e, sz)}
-                          className={`min-w-[30px] h-7 px-1.5 text-[10px] font-bold rounded-xs transition-colors border ${
-                            szDisabled
-                              ? "bg-gray-100 text-gray-400 border-gray-200 line-through cursor-not-allowed"
-                              : "bg-white text-[#141410] border-gray-300 hover:bg-[#141410] hover:text-white hover:border-black"
-                          }`}
-                        >
-                          {sz}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowSizePicker(true);
-                  }}
-                  className="w-full py-2 bg-white text-[#141410] hover:bg-[#141410] hover:text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] rounded-xs shadow-md transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <ShoppingBag size={12} />
-                  <span>Quick Add</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleQuickAdd}
+                className="w-full py-2 bg-white text-[#141410] hover:bg-[#141410] hover:text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] rounded-xs shadow-md transition-colors flex items-center justify-center gap-1.5"
+              >
+                <ShoppingBag size={12} />
+                <span>Quick Add</span>
+              </button>
             </div>
           )}
         </div>
@@ -309,14 +240,6 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
           </div>
         </div>
       </div>
-
-      {/* Quick View Modal */}
-      <QuickViewModal
-        product={product}
-        isOpen={quickViewOpen}
-        onClose={() => setQuickViewOpen(false)}
-        onOpenCart={onOpenCart}
-      />
     </>
   );
 }

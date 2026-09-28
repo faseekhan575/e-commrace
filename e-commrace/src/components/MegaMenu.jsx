@@ -161,7 +161,7 @@ export const MEGA_MENU_DATA = {
   },
 };
 
-export default function MegaMenu({ activeCategory, onClose }) {
+export default function MegaMenu({ activeCategory, onClose, onMouseEnter, onMouseLeave }) {
   const categories = useSelector((state) => state.products.categories);
   if (!activeCategory) return null;
   const category = categories.find((item) => (item.slug || item._id) === activeCategory);
@@ -177,8 +177,9 @@ export default function MegaMenu({ activeCategory, onClose }) {
 
   return (
     <div
-      onMouseLeave={onClose}
-      className="absolute top-full left-0 w-full bg-white border-b border-t border-[#e8e8e0] shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave || onClose}
+      className="absolute top-full left-0 w-full bg-white border-b border-t border-[#e8e8e0] shadow-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:content-['']"
     >
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-12 gap-8 items-start">

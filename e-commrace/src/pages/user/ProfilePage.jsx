@@ -33,8 +33,10 @@ export default function ProfilePage() {
   const [updatingPass, setUpdatingPass] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchProfile());
-  }, [dispatch]);
+    if (!user) {
+      dispatch(fetchProfile());
+    }
+  }, [dispatch, user]);
 
   useEffect(() => {
     if (user) {

@@ -1,4 +1,4 @@
-﻿import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../axiosConfig";
 import { getAccessToken, getSessionRevision, readSessionValue, resetSessionCredentials, setAccessToken, writeSessionValue } from "../utils/session";
 
@@ -114,17 +114,23 @@ const authSlice = createSlice({
       .addCase(registerUser.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(registerUser.fulfilled, (state) => { state.loading = false; })
       .addCase(registerUser.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-      .addCase(fetchProfile.pending, (state, action) => { state.sessionStatus = "checking"; state.sessionError = null; state.profileRequestId = action.meta.requestId; })
+      .addCase(fetchProfile.pending, (state, action) => {
+        if (!state.isAuthenticated) state.sessionStatus = "checking";
+        state.sessionError = null;
+        state.profileRequestId = action.meta.requestId;
+      })
       .addCase(fetchProfile.fulfilled, (state, action) => {
         if (state.profileRequestId === action.meta.requestId) applyAuthenticated(state, action.payload);
       })
       .addCase(fetchProfile.rejected, (state, action) => {
         if (state.profileRequestId !== action.meta.requestId) return;
+        state.initialized = true;
         if ([400, 401, 403].includes(action.payload?.status)) clearAuthState(state);
         else {
-          state.initialized = true;
-          state.sessionStatus = "error";
-          state.sessionError = action.payload?.message || "Unable to check your session. Please retry.";
+          if (!state.isAuthenticated) {
+            state.sessionStatus = "error";
+            state.sessionError = action.payload?.message || "Unable to check your session. Please retry.";
+          }
           state.profileRequestId = null;
         }
       });

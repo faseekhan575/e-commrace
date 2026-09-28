@@ -91,7 +91,7 @@ export default function UserLayout() {
   const handleMouseLeaveNav = () => {
     megaMenuTimeoutRef.current = setTimeout(() => {
       setActiveMegaCategory(null);
-    }, 150);
+    }, 350);
   };
 
   const handleNewsletterSubmit = (e) => {
@@ -227,7 +227,8 @@ export default function UserLayout() {
                   </Link>
 
                   {/* Dropdown menu */}
-                  <div className="absolute right-0 mt-1 w-52 bg-white border border-[#e8e8e0] rounded shadow-2xl py-2 hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 top-full pt-1.5 w-52 hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-1 duration-150 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']">
+                    <div className="bg-white border border-[#e8e8e0] rounded shadow-2xl py-2 overflow-hidden">
                     <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
                       <p className="text-xs font-bold text-[#141410] truncate">{user?.fullname}</p>
                       <p className="text-[10px] text-gray-500 font-mono truncate">{user?.email}</p>
@@ -255,6 +256,7 @@ export default function UserLayout() {
                       Sign Out
                     </button>
                   </div>
+                </div>
                 </div>
               ) : (
                 <Link
@@ -291,6 +293,7 @@ export default function UserLayout() {
             if (megaMenuTimeoutRef.current) clearTimeout(megaMenuTimeoutRef.current);
           }}
           onMouseLeave={handleMouseLeaveNav}
+          onClose={() => setActiveMegaCategory(null)}
         />
       </header>
 

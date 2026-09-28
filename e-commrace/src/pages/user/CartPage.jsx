@@ -1,4 +1,4 @@
-﻿import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { ArrowRight, ShoppingBag, Lock, RefreshCw, ArrowLeft } from "lucide-react";
 import CartLine from "../../components/CartLine";
@@ -21,8 +21,7 @@ export default function CartPage() {
         <div>{items.map((item) => <CartLine key={cartItemId(item)} item={item} />)}</div>
         <aside className="self-start border border-[#e2dccf] bg-white p-7 lg:sticky lg:top-28"><p className="mb-7 text-[11px] uppercase tracking-[0.2em] text-[#8e7750]">Order summary</p><div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span>{money(subtotal)}</span></div><div className="my-6 flex justify-between border-t border-[#e9e4da] pt-6"><span className="font-serif text-xl">Order total</span><strong className="font-medium">{money(subtotal)}</strong></div>
           {invalid && <p className="mb-4 text-xs leading-5 text-red-700">Please update unavailable quantities before checkout.</p>}
-          {unsynced && <button disabled={loading} onClick={() => dispatch(mergeGuestCart())} className="mb-4 w-full border border-[#b7a17a] px-4 py-3 text-xs">{loading ? "Syncing your bag…" : "Sync saved pieces to your account"}</button>}
-          {invalid || loading || unsynced ? <button disabled className="flex w-full items-center justify-center gap-3 bg-stone-300 py-4 text-[11px] uppercase tracking-[0.16em] text-white">{loading ? "Updating bag…" : "Checkout"}<Lock size={13} /></button> : <Link to={isAuthenticated ? "/checkout" : "/login?redirect=%2Fcheckout"} state={{ from: { pathname: "/checkout" } }} className="group flex items-center justify-between bg-[#27271f] px-5 py-4 text-[11px] uppercase tracking-[0.16em] text-white transition hover:bg-[#494733]">{isAuthenticated ? "Proceed to checkout" : "Sign in to checkout"}<ArrowRight size={15} className="transition group-hover:translate-x-1" /></Link>}
+          {invalid || loading ? <button disabled className="flex w-full items-center justify-center gap-3 bg-stone-300 py-4 text-[11px] uppercase tracking-[0.16em] text-white">{loading ? "Updating bag…" : "Checkout"}<Lock size={13} /></button> : <Link to="/checkout" className="group flex items-center justify-between bg-[#27271f] px-5 py-4 text-[11px] uppercase tracking-[0.16em] text-white transition hover:bg-[#494733]">Proceed to checkout<ArrowRight size={15} className="transition group-hover:translate-x-1" /></Link>}
           <p className="mt-5 flex items-start gap-2 text-xs leading-5 text-stone-500"><Lock size={13} className="mt-1 shrink-0" />Cash on delivery. Your order and availability are confirmed when you place your order.</p>
         </aside>
       </div>}

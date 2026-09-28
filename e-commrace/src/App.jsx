@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { clearSession, fetchProfile, sessionTokenRefreshed } from "./store/authSlice";
@@ -57,7 +57,7 @@ function SessionError() {
 function RequireAuth({ children }) {
   const { isAuthenticated, initialized, sessionStatus } = useSelector((state) => state.auth);
   const location = useLocation();
-  if (!initialized || sessionStatus === "checking") return <SessionLoading />;
+  if (!initialized || (!isAuthenticated && sessionStatus === "checking")) return <SessionLoading />;
   if (sessionStatus === "error" && !isAuthenticated) return <SessionError />;
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   return children;
@@ -65,7 +65,7 @@ function RequireAuth({ children }) {
 function RequireAdmin({ children }) {
   const { isAuthenticated, initialized, sessionStatus, role } = useSelector((state) => state.auth);
   const location = useLocation();
-  if (!initialized || sessionStatus === "checking") return <SessionLoading />;
+  if (!initialized || (!isAuthenticated && sessionStatus === "checking")) return <SessionLoading />;
   if (sessionStatus === "error" && !isAuthenticated) return <SessionError />;
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (role !== "admin" && role !== "superadmin") return <Navigate to="/" replace />;
@@ -142,7 +142,7 @@ export default function App() {
           <Route path="cart"          element={<CartPage />} />
           <Route path="checkout"      element={<CheckoutPage />} />
           <Route path="orders"        element={<RequireAuth><OrdersPage /></RequireAuth>} />
-          <Route path="orders/:orderId" element={<RequireAuth><OrdersPage /></RequireAuth>} />
+          <Route path="orders/:orderId" element={<OrdersPage />} />
           <Route path="profile"       element={<RequireAuth><ProfilePage /></RequireAuth>} />
         </Route>
 
