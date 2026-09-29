@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../store/cartSlice";
@@ -89,7 +90,9 @@ export default function QuickViewModal({ product, isOpen, onClose, onOpenCart })
     } catch (error) { toast.error(errorMessage(error)); }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200">
       {/* Backdrop */}
       <div
@@ -296,6 +299,7 @@ export default function QuickViewModal({ product, isOpen, onClose, onOpenCart })
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -22,7 +22,7 @@ export default function CartPage() {
         <aside className="self-start border border-[#e2dccf] bg-white p-7 lg:sticky lg:top-28"><p className="mb-7 text-[11px] uppercase tracking-[0.2em] text-[#8e7750]">Order summary</p><div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span>{money(subtotal)}</span></div><div className="my-6 flex justify-between border-t border-[#e9e4da] pt-6"><span className="font-serif text-xl">Order total</span><strong className="font-medium">{money(subtotal)}</strong></div>
           {invalid && <p className="mb-4 text-xs leading-5 text-red-700">Please update unavailable quantities before checkout.</p>}
           {invalid || loading ? <button disabled className="flex w-full items-center justify-center gap-3 bg-stone-300 py-4 text-[11px] uppercase tracking-[0.16em] text-white">{loading ? "Updating bag…" : "Checkout"}<Lock size={13} /></button> : <Link to="/checkout" className="group flex items-center justify-between bg-[#27271f] px-5 py-4 text-[11px] uppercase tracking-[0.16em] text-white transition hover:bg-[#494733]">Proceed to checkout<ArrowRight size={15} className="transition group-hover:translate-x-1" /></Link>}
-          <p className="mt-5 flex items-start gap-2 text-xs leading-5 text-stone-500"><Lock size={13} className="mt-1 shrink-0" />Cash on delivery. Your order and availability are confirmed when you place your order.</p>
+          <p className="mt-5 flex items-start gap-2 text-xs leading-5 text-stone-500"><Lock size={13} className="mt-1 shrink-0" />Cash on delivery & PayFast available. Guest checkout supported — no sign in required to order.</p>
         </aside>
       </div>}
     </div>

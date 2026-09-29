@@ -1,4 +1,4 @@
-﻿let revision = 0;
+let revision = 0;
 let memoryToken;
 
 export function readSessionValue(key) {
@@ -18,10 +18,23 @@ export function setAccessToken(token) {
   writeSessionValue("accessToken", memoryToken);
 }
 export function getSessionRevision() { return revision; }
+export function readSessionUser() {
+  try {
+    const raw = localStorage.getItem("userData");
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+export function writeSessionUser(user) {
+  try {
+    if (user) localStorage.setItem("userData", JSON.stringify(user));
+    else localStorage.removeItem("userData");
+  } catch { /* ignore */ }
+}
 export function resetSessionCredentials() {
   revision += 1;
   setAccessToken(null);
   writeSessionValue("userRole", null);
+  writeSessionUser(null);
 }
 export function broadcastSessionEvent(name, detail) {
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(`session:${name}`, { detail }));

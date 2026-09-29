@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginUser, clearError } from "../../store/authSlice";
 import GoogleAuthButton from "../../components/GoogleAuthButton";
 import BrandLogo from "../../components/BrandLogo";
-import { Eye, EyeOff, ArrowRight, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 
 /* ── Role redirect map ── */
@@ -95,7 +95,10 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  const from = typeof location.state?.from === "string" 
+    ? location.state.from 
+    : location.state?.from?.pathname || "/";
+  const isCheckoutRedirect = from.includes("checkout");
   const { loading } = useSelector((s) => s.auth);
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
@@ -221,6 +224,30 @@ export default function LoginPage() {
               Your role is detected automatically — no need to choose.
             </p>
           </div>
+
+          {isCheckoutRedirect && (
+            <div className="vl-a1 mb-6 p-4 rounded-2xl border border-[#d4af37]/40 bg-[#fdfbf4] text-[#1a1a14] shadow-xs">
+              <div className="flex items-start gap-2.5">
+                <Sparkles size={16} className="text-[#a38753] mt-0.5 shrink-0" />
+                <div className="flex-1 text-xs">
+                  <p className="font-semibold text-stone-900">
+                    Checking out your order?
+                  </p>
+                  <p className="mt-1 text-stone-600 leading-relaxed">
+                    Please log in for a better experience, faster dispatch updates, and saved addresses. Or you can continue your checkout directly without an account.
+                  </p>
+                  <div className="mt-3">
+                    <Link
+                      to="/checkout"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-stone-300 text-stone-900 text-xs font-semibold hover:border-stone-500 hover:text-black transition-colors"
+                    >
+                      Continue without login →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 

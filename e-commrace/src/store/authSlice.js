@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../axiosConfig";
-import { getAccessToken, getSessionRevision, readSessionValue, resetSessionCredentials, setAccessToken, writeSessionValue } from "../utils/session";
+import { getAccessToken, getSessionRevision, readSessionValue, readSessionUser, resetSessionCredentials, setAccessToken, writeSessionValue, writeSessionUser } from "../utils/session";
 
 const message = (error, fallback) => error.response?.data?.message || error.message || fallback;
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
@@ -80,13 +80,29 @@ function applyAuthenticated(state, payload) {
   state.error = null;
   state.profileRequestId = null;
   writeSessionValue("userRole", role);
+  writeSessionUser(user);
 }
+
+const initialCachedUser = readSessionUser();
+const initialCachedRole = readSessionValue("userRole") || initialCachedUser?.role || null;
+const initialCachedToken = getAccessToken();
+const hasCachedSession = !!(initialCachedToken && (initialCachedUser || initialCachedRole));
+
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    user: null, token: getAccessToken(), role: null, isAuthenticated: false,
-    initialized: false, sessionStatus: "idle", sessionError: null, profileRequestId: null,
-    loading: false, error: null, otpPending: !!readSessionValue("otpEmail"), otpEmail: readSessionValue("otpEmail"),
+    user: initialCachedUser,
+    token: initialCachedToken,
+    role: initialCachedRole,
+    isAuthenticated: hasCachedSession,
+    initialized: hasCachedSession,
+    sessionStatus: hasCachedSession ? "authenticated" : "idle",
+    sessionError: null,
+    profileRequestId: null,
+    loading: false,
+    error: null,
+    otpPending: !!readSessionValue("otpEmail"),
+    otpEmail: readSessionValue("otpEmail"),
   },
   reducers: {
     clearError: (state) => { state.error = null; },
@@ -120,16 +136,17 @@ const authSlice = createSlice({
         state.profileRequestId = action.meta.requestId;
       })
       .addCase(fetchProfile.fulfilled, (state, action) => {
-        if (state.profileRequestId === action.meta.requestId) applyAuthenticated(state, action.payload);
+        if (state.profileRequestId === action.meta.requestId || !state.user) applyAuthenticated(state, action.payload);
       })
       .addCase(fetchProfile.rejected, (state, action) => {
-        if (state.profileRequestId !== action.meta.requestId) return;
         state.initialized = true;
         if ([400, 401, 403].includes(action.payload?.status)) clearAuthState(state);
         else {
           if (!state.isAuthenticated) {
             state.sessionStatus = "error";
             state.sessionError = action.payload?.message || "Unable to check your session. Please retry.";
+          } else {
+            state.sessionStatus = "authenticated";
           }
           state.profileRequestId = null;
         }

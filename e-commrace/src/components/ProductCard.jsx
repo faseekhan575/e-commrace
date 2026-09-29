@@ -125,10 +125,7 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
       <div
         className="group relative flex flex-col bg-white transition-all duration-300"
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          setShowSizePicker(false);
-        }}
+        onMouseLeave={() => setIsHovered(false)}
       >
         {/* Portrait Apparel Image Container (Aspect Ratio 3:4.2) */}
         <div className="relative aspect-[3/4.2] w-full overflow-hidden bg-[#f4f4f0] rounded-none sm:rounded-xs">

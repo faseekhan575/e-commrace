@@ -1,8 +1,8 @@
-﻿import axios from "axios";
+import axios from "axios";
 import { broadcastSessionEvent, getAccessToken, getSessionRevision, resetSessionCredentials, setAccessToken } from "./utils/session";
 
 export const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || "http://localhost:4000").replace(/\/+$/, "");
-const options = { baseURL: API_BASE_URL, withCredentials: true, timeout: 25000 };
+const options = { baseURL: API_BASE_URL, withCredentials: true, timeout: 8000 };
 const instance = axios.create(options);
 const refreshClient = axios.create(options);
 let refreshPromise = null;

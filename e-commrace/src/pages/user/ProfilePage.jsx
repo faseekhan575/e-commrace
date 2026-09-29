@@ -101,6 +101,9 @@ export default function ProfilePage() {
     catch (error) { toast.error(error.response?.data?.message || "Could not delete your account"); }
   };
 
+  const location = useLocation();
+  const isAdminContext = location.pathname.startsWith("/admin");
+
   if (loading && !user) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-[#fafaf8]">
@@ -110,27 +113,33 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafaf8] py-8 sm:py-12">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className={`min-h-screen ${isAdminContext ? "bg-transparent py-2" : "bg-[#fafaf8] py-8 sm:py-12"}`}>
+      <div className={isAdminContext ? "max-w-6xl mx-auto" : "max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"}>
         
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-[#78786a] mb-6">
-          <Link to="/" className="hover:text-black">Home</Link>
+          <Link to={isAdminContext ? "/admin" : "/"} className="hover:text-black">
+            {isAdminContext ? "Admin Workspace" : "Home"}
+          </Link>
           <span>/</span>
-          <span className="text-[#141410] font-semibold">Account Profile</span>
+          <span className="text-[#141410] font-semibold">
+            {isAdminContext ? "Admin Security & Profile" : "Account Profile"}
+          </span>
         </div>
 
         {/* Page Title */}
         <div className="border-b border-[#e8e8e0] pb-6 mb-8 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <div>
             <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#141410]">
-              Personal Account
+              {isAdminContext ? "Administrator Profile" : "Personal Account"}
             </h1>
             <p className="text-xs text-[#78786a] font-mono mt-1">
-              Manage your personal information, security credentials, and preferences
+              {isAdminContext
+                ? "Manage your administrative credentials, security password, and store manager profile"
+                : "Manage your personal information, security credentials, and preferences"}
             </p>
           </div>
-          {(role === "admin" || role === "superadmin") && (
+          {!isAdminContext && (role === "admin" || role === "superadmin") && (
             <Link
               to="/admin"
               className="px-4 py-2 bg-purple-100 text-purple-800 text-xs font-bold uppercase tracking-wider rounded hover:bg-purple-200 transition-colors"

@@ -172,14 +172,14 @@ export default function MegaMenu({ activeCategory, onClose, onMouseEnter, onMous
       { title: "Thoughtfully chosen", links: [{ label: "In stock now", url: "/products?inStock=true" }, { label: "Special offers", url: "/products?sale=true" }, { label: "Under PKR 10,000", url: "/products?maxPrice=10000" }] },
     ],
     featured: category?.image?.url ? { title: category.name, subtitle: category.description || category.subtitle, image: category.image.url, link: `/products?category=${encodeURIComponent(category.slug || category._id)}` } : null,
-  } : MEGA_MENU_DATA[activeCategory];
+  } : (MEGA_MENU_DATA[activeCategory] || MEGA_MENU_DATA["ready-to-wear"]);
   if (!data) return null;
 
   return (
     <div
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave || onClose}
-      className="absolute top-full left-0 w-full bg-white border-b border-t border-[#e8e8e0] shadow-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:content-['']"
+      className="absolute top-full left-0 w-full bg-white border-b border-t border-[#e8e8e0] shadow-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150 before:absolute before:-top-8 before:left-0 before:right-0 before:h-8 before:content-['']"
     >
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-12 gap-8 items-start">

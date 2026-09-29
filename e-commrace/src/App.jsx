@@ -57,7 +57,8 @@ function SessionError() {
 function RequireAuth({ children }) {
   const { isAuthenticated, initialized, sessionStatus } = useSelector((state) => state.auth);
   const location = useLocation();
-  if (!initialized || (!isAuthenticated && sessionStatus === "checking")) return <SessionLoading />;
+  if (isAuthenticated) return children;
+  if (!initialized || sessionStatus === "checking") return <SessionLoading />;
   if (sessionStatus === "error" && !isAuthenticated) return <SessionError />;
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   return children;
@@ -65,7 +66,8 @@ function RequireAuth({ children }) {
 function RequireAdmin({ children }) {
   const { isAuthenticated, initialized, sessionStatus, role } = useSelector((state) => state.auth);
   const location = useLocation();
-  if (!initialized || (!isAuthenticated && sessionStatus === "checking")) return <SessionLoading />;
+  if (isAuthenticated && (role === "admin" || role === "superadmin")) return children;
+  if (!initialized || sessionStatus === "checking") return <SessionLoading />;
   if (sessionStatus === "error" && !isAuthenticated) return <SessionError />;
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (role !== "admin" && role !== "superadmin") return <Navigate to="/" replace />;

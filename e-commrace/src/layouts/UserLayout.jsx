@@ -51,6 +51,8 @@ export default function UserLayout() {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
   const megaMenuTimeoutRef = useRef(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuTimeoutRef = useRef(null);
 
   const cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const wishlistCount = wishlistItems ? wishlistItems.length : 0;
@@ -73,6 +75,7 @@ export default function UserLayout() {
     setMobileMenuOpen(false);
     setSearchModalOpen(false);
     setActiveMegaCategory(null);
+    setUserMenuOpen(false);
   }, [location.pathname, location.search]);
 
   const handleLogout = async () => {
@@ -91,7 +94,18 @@ export default function UserLayout() {
   const handleMouseLeaveNav = () => {
     megaMenuTimeoutRef.current = setTimeout(() => {
       setActiveMegaCategory(null);
-    }, 350);
+    }, 650);
+  };
+
+  const handleMouseEnterUser = () => {
+    if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
+    setUserMenuOpen(true);
+  };
+
+  const handleMouseLeaveUser = () => {
+    userMenuTimeoutRef.current = setTimeout(() => {
+      setUserMenuOpen(false);
+    }, 450);
   };
 
   const handleNewsletterSubmit = (e) => {
@@ -158,11 +172,12 @@ export default function UserLayout() {
                   onFocus={() => handleMouseEnterNav(cat.key)}
                   onKeyDown={(event) => { if (event.key === "Escape") setActiveMegaCategory(null); }}
                   onMouseLeave={handleMouseLeaveNav}
-                  className="h-full flex items-center relative"
+                  onClick={() => setActiveMegaCategory(activeMegaCategory === cat.key ? null : cat.key)}
+                  className="h-full flex items-center relative cursor-pointer"
                 >
                   <Link
                     to={cat.url}
-                    className={`text-xs font-semibold uppercase tracking-[0.18em] transition-all flex items-center gap-1.5 py-2 ${
+                    className={`text-xs font-semibold uppercase tracking-[0.18em] transition-all flex items-center gap-1.5 py-3 ${
                       cat.isSale
                         ? "text-rose-600 font-bold hover:text-rose-800"
                         : "text-[#141410] hover:text-[#8e8e7e]"
@@ -176,7 +191,7 @@ export default function UserLayout() {
                         {cat.badge}
                       </span>
                     )}
-                    <ChevronDown size={11} className="opacity-50 group-hover:rotate-180 transition-transform" />
+                    <ChevronDown size={11} className={`opacity-50 transition-transform duration-200 ${activeMegaCategory === cat.key ? "rotate-180" : ""}`} />
                   </Link>
                 </div>
               ))}
@@ -212,10 +227,17 @@ export default function UserLayout() {
 
               {/* User Account / Profile */}
               {isAuthenticated ? (
-                <div className="relative group">
-                  <Link
-                    to={role === "admin" || role === "superadmin" ? "/admin" : "/profile"}
-                    className="flex items-center gap-1.5 p-1.5 text-xs font-semibold uppercase tracking-wider text-[#141410] hover:text-[#78786a] rounded-full hover:bg-gray-100 transition-colors"
+                <div
+                  className="relative"
+                  onMouseEnter={handleMouseEnterUser}
+                  onMouseLeave={handleMouseLeaveUser}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setUserMenuOpen((prev) => !prev)}
+                    className="flex items-center gap-1.5 p-1.5 text-xs font-semibold uppercase tracking-wider text-[#141410] hover:text-[#78786a] rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                    aria-expanded={userMenuOpen}
+                    aria-label="Account menu"
                   >
                     <div className="w-8 h-8 rounded-full bg-[#141410] text-white flex items-center justify-center text-xs font-bold font-mono">
                       {user?.fullname?.charAt(0)?.toUpperCase() || "U"}
@@ -223,40 +245,61 @@ export default function UserLayout() {
                     <span className="hidden md:inline text-xs font-bold">
                       {user?.fullname?.split(" ")[0] || "Account"}
                     </span>
-                    <ChevronDown size={12} className="opacity-60 hidden md:inline" />
-                  </Link>
+                    <ChevronDown size={12} className={`opacity-60 hidden md:inline transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} />
+                  </button>
 
                   {/* Dropdown menu */}
-                  <div className="absolute right-0 top-full pt-1.5 w-52 hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-1 duration-150 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']">
-                    <div className="bg-white border border-[#e8e8e0] rounded shadow-2xl py-2 overflow-hidden">
-                    <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
-                      <p className="text-xs font-bold text-[#141410] truncate">{user?.fullname}</p>
-                      <p className="text-[10px] text-gray-500 font-mono truncate">{user?.email}</p>
-                      <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-200 text-[9px] font-mono font-bold uppercase rounded text-gray-700">
-                        {role || "Customer"}
-                      </span>
-                    </div>
-
-                    {(role === "admin" || role === "superadmin") && (
-                      <Link to="/admin" className="block px-4 py-2 text-xs font-bold text-[#7c3aed] hover:bg-purple-50">
-                        ⚡ Seller Admin Portal
-                      </Link>
-                    )}
-
-                    <Link to="/profile" className="block px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                      My Profile & Address Book
-                    </Link>
-                    <Link to="/orders" className="block px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                      Order History & Tracking
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 border-t border-gray-100"
+                  {userMenuOpen && (
+                    <div
+                      onMouseEnter={handleMouseEnterUser}
+                      onMouseLeave={handleMouseLeaveUser}
+                      className="absolute right-0 top-full pt-2 w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:content-['']"
                     >
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
+                      <div className="bg-white border border-[#e8e8e0] rounded-xl shadow-2xl py-2 overflow-hidden">
+                        <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
+                          <p className="text-xs font-bold text-[#141410] truncate">{user?.fullname}</p>
+                          <p className="text-[10px] text-gray-500 font-mono truncate">{user?.email}</p>
+                          <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-200 text-[9px] font-mono font-bold uppercase rounded text-gray-700">
+                            {role || "Customer"}
+                          </span>
+                        </div>
+
+                        {(role === "admin" || role === "superadmin") && (
+                          <Link
+                            to="/admin"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="block px-4 py-2 text-xs font-bold text-[#7c3aed] hover:bg-purple-50 transition-colors"
+                          >
+                            ⚡ Seller Admin Portal
+                          </Link>
+                        )}
+
+                        <Link
+                          to={role === "admin" || role === "superadmin" ? "/admin/profile" : "/profile"}
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          My Profile & Address Book
+                        </Link>
+                        <Link
+                          to="/orders"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          Order History & Tracking
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            handleLogout();
+                          }}
+                          className="w-full text-left px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 border-t border-gray-100 transition-colors cursor-pointer"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Link

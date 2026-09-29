@@ -16,6 +16,8 @@ import {
   Truck,
   X,
   Building2,
+  LogIn,
+  Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "../../axiosConfig";
@@ -71,6 +73,7 @@ export default function CheckoutPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [guestDismissed, setGuestDismissed] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const submittingRef = useRef(false);
 
@@ -369,6 +372,45 @@ export default function CheckoutPage() {
           <section>
             {step === 1 ? (
               <form onSubmit={nextStep} className="space-y-7">
+                {!isAuthenticated && !guestDismissed && (
+                  <div className="rounded-lg border border-[#e0d6c4] bg-[#fdfbf6] p-4 sm:p-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#d4af37]/15 text-[#91751d] flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles size={16} />
+                        </div>
+                        <div>
+                          <p className="font-serif text-base font-semibold text-[#111827]">
+                            Please log in for a better experience
+                          </p>
+                          <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                            Log in to auto-fill saved addresses and enjoy real-time order tracking, or continue directly as a guest.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <Link
+                          to="/login"
+                          state={{ from: { pathname: "/checkout" } }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#111827] text-white text-[11px] font-semibold uppercase tracking-wider rounded hover:bg-black transition-colors"
+                        >
+                          <LogIn size={13} /> Log In
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGuestDismissed(true);
+                            toast.success("Continuing checkout as guest", { icon: "🛍️" });
+                          }}
+                          className="inline-flex items-center justify-center px-3.5 py-2 border border-stone-300 bg-white text-stone-700 text-[11px] font-semibold uppercase tracking-wider rounded hover:border-stone-500 hover:text-black transition-colors"
+                        >
+                          Continue without login
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <h2 className="flex items-center gap-3 font-serif text-2xl">
                   <MapPin size={20} strokeWidth={1.5} />
                   Where should we deliver?
@@ -621,6 +663,38 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Guest checkout recommendation badge at last */}
+                {!isAuthenticated && (
+                  <div className="rounded-lg border border-[#e2d5bd] bg-[#fdfbf7] p-4 text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-start gap-2.5">
+                        <Sparkles size={16} className="text-[#a38753] shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-stone-900">
+                            Please log in for a better experience & live tracking
+                          </p>
+                          <p className="text-[12px] text-stone-600 mt-0.5">
+                            Registered members enjoy order history and express delivery tracking. You can also place this order right now as a guest.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0 pt-1 sm:pt-0">
+                        <Link
+                          to="/login"
+                          state={{ from: { pathname: "/checkout" } }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111827] text-white text-[11px] font-semibold uppercase tracking-wider rounded hover:bg-black transition-colors"
+                        >
+                          <LogIn size={12} /> Log In
+                        </Link>
+                        <span className="text-stone-300">|</span>
+                        <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded">
+                          Continue without login ✓
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Main Action Button */}
                 {selectedPayment === "cod" ? (
