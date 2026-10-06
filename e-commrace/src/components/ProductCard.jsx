@@ -11,7 +11,6 @@ import {
   errorMessage,
   imageUrl,
   placeholderImage,
-  productColors,
   firstAvailableSize,
 } from "../utils/commerce";
 
@@ -36,21 +35,21 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
       ? product.images
       : [
           {
-            url: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80",
+            url: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800&q=85",
           },
         ];
 
   const primaryImage = optimizeImage(
     imageUrl(rawImages.find((image) => image.isDefault) || rawImages[0]) ||
       placeholderImage,
-    { width: 700 }
+    { width: 800 }
   );
   const secondaryImage = optimizeImage(
     rawImages.find((image) => image.isHover)?.url ||
       rawImages[1]?.url ||
       rawImages[1] ||
       rawImages[0]?.url,
-    { width: 700 }
+    { width: 800 }
   );
 
   const sizes =
@@ -74,10 +73,11 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
       {
         icon: willBeSaved ? "❤️" : "🤍",
         style: {
-          borderRadius: "10px",
-          background: "#1a1a14",
+          borderRadius: "8px",
+          background: "#0e0e0c",
           color: "#fff",
           fontSize: "12px",
+          letterSpacing: "0.05em",
         },
       }
     );
@@ -101,15 +101,18 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
           stitching: product?.stitching || "Stitched",
         })
       ).unwrap();
-      toast.success(`Added ${title} to Bag`, {
+      toast.success(`Added ${title} (${chosenSize}) to Bag`, {
         icon: "🛍️",
         style: {
-          borderRadius: "10px",
-          background: "#1a1a14",
+          borderRadius: "8px",
+          background: "#0e0e0c",
           color: "#fff",
           fontSize: "12px",
         },
       });
+      if (typeof onOpenCart === "function") {
+        onOpenCart();
+      }
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -121,122 +124,151 @@ export default function ProductCard({ product, index = 0, onOpenCart }) {
       : null;
 
   return (
-    <>
-      <div
-        className="group relative flex flex-col bg-white transition-all duration-300"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* Portrait Apparel Image Container (Aspect Ratio 3:4.2) */}
-        <div className="relative aspect-[3/4.2] w-full overflow-hidden bg-[#f4f4f0] rounded-none sm:rounded-xs">
-          {/* Skeleton Shimmer while image is loading */}
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-gradient-to-r from-[#e5e7eb] via-[#f3f4f6] to-[#e5e7eb] bg-[length:200%_100%] animate-pulse" />
-          )}
+    <div
+      className="group relative flex flex-col bg-white transition-all duration-300"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Editorial Aspect Ratio Container (3:4.2) */}
+      <div className="relative aspect-[3/4.2] w-full overflow-hidden bg-[#f5f4ef] rounded-none">
+        {/* Subtle shimmer placeholder */}
+        {!imageLoaded && (
+          <div className="absolute inset-0 bg-[#ebe9e1] animate-pulse" />
+        )}
 
-          <Link to={`/products/${id}`} className="block w-full h-full">
+        <Link to={`/products/${id}`} className="block w-full h-full relative overflow-hidden">
+          {/* Primary Product Image */}
+          <img
+            src={primaryImage}
+            alt={title}
+            loading={index < 4 ? "eager" : "lazy"}
+            decoding="async"
+            onLoad={() => setImageLoaded(true)}
+            className={`w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
+              isHovered && rawImages.length > 1 ? "opacity-0" : "opacity-100"
+            } ${isOutOfStock ? "grayscale opacity-75" : ""}`}
+          />
+
+          {/* Secondary Hover Lookbook Image */}
+          {rawImages.length > 1 && (
             <img
-              src={isHovered && rawImages.length > 1 ? secondaryImage : primaryImage}
-              alt={title}
-              loading={index < 6 ? "eager" : "lazy"}
+              src={secondaryImage}
+              alt={`${title} alternate view`}
+              loading="lazy"
               decoding="async"
-              onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105 ${
-                !imageLoaded ? "opacity-0" : "opacity-100"
+              className={`absolute inset-0 w-full h-full object-cover object-top transition-all duration-700 ease-out group-hover:scale-105 ${
+                isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
               } ${isOutOfStock ? "grayscale opacity-75" : ""}`}
             />
-          </Link>
+          )}
+        </Link>
 
-          {/* Badges Container */}
-          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-            {discountPercent && (
-              <span className="bg-[#1a1a14] text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                -{discountPercent}% OFF
-              </span>
-            )}
-            {product?.isHot && (
-              <span className="bg-[#d4af37] text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                HOT SELLER
-              </span>
-            )}
-            {isOutOfStock ? (
-              <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                SOLD OUT
-              </span>
-            ) : stock <= 5 ? (
-              <span className="bg-amber-600 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
-                ONLY {stock} LEFT
-              </span>
-            ) : null}
-          </div>
+        {/* Minimalist Floating Status Tags (Top Left) */}
+        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 items-start pointer-events-none">
+          {discountPercent ? (
+            <span className="bg-[#0e0e0c] text-white text-[9.5px] font-sans font-semibold tracking-[0.16em] uppercase px-2 py-0.5">
+              -{discountPercent}%
+            </span>
+          ) : product?.isHot ? (
+            <span className="bg-[#c5a059] text-white text-[9.5px] font-sans font-semibold tracking-[0.16em] uppercase px-2 py-0.5">
+              ICONIC
+            </span>
+          ) : null}
 
-          {/* Action Icons Right Top */}
-          <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-1.5">
-            {/* Wishlist Button */}
-            <button
-              type="button"
-              onClick={handleWishlist}
-              aria-label="Wishlist"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-xs hover:bg-white hover:scale-110 active:scale-95 transition-all"
-            >
-              <Heart
-                size={16}
-                className={`transition-colors ${
-                  isSaved
-                    ? "fill-red-600 text-red-600"
-                    : "text-[#1a1a14] hover:text-red-600"
-                }`}
-              />
-            </button>
-          </div>
+          {isOutOfStock ? (
+            <span className="bg-[#595852] text-white text-[9px] font-sans font-medium tracking-[0.15em] uppercase px-2 py-0.5">
+              SOLD OUT
+            </span>
+          ) : stock <= 3 ? (
+            <span className="bg-[#8c3a27] text-white text-[9px] font-sans font-medium tracking-[0.15em] uppercase px-2 py-0.5">
+              FEW REMAINING
+            </span>
+          ) : null}
+        </div>
 
-          {/* Quick Add To Bag Overlay on Card Hover */}
-          {!isOutOfStock && (
-            <div
-              className={`absolute bottom-0 left-0 right-0 p-2 sm:p-2.5 bg-gradient-to-t from-black/75 via-black/35 to-transparent transition-all duration-300 ${
-                isHovered
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-2 pointer-events-none"
+        {/* Floating Minimal Wishlist Trigger (Top Right) */}
+        <div className="absolute top-3 right-3 z-20">
+          <button
+            type="button"
+            onClick={handleWishlist}
+            aria-label="Save to Wishlist"
+            className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-[#141410] hover:text-[#c5a059] shadow-sm hover:scale-110 active:scale-95 transition-all duration-200"
+          >
+            <Heart
+              size={15}
+              className={`transition-colors ${
+                isSaved ? "fill-[#a82424] text-[#a82424]" : "text-[#141410]"
               }`}
-            >
+            />
+          </button>
+        </div>
+
+        {/* Sleek Slide-Up Quick Add Drawer with Direct Size Selector */}
+        {!isOutOfStock && (
+          <div
+            className={`absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/85 via-black/50 to-transparent transition-all duration-300 z-20 ${
+              isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+            }`}
+          >
+            <div className="flex flex-col gap-2">
+              {/* Direct Size Pills for 1-Tap Purchase */}
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <span className="text-[9px] font-sans uppercase tracking-widest text-[#dcdad0] mr-1 hidden sm:inline">
+                  SIZE:
+                </span>
+                {sizes.slice(0, 5).map((sz) => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={(e) => handleQuickAdd(e, sz)}
+                    className="px-2 py-1 bg-white/90 hover:bg-[#c5a059] hover:text-white text-[#0e0e0c] text-[10px] font-mono font-bold uppercase transition-colors rounded-xs shadow-xs"
+                    title={`Add size ${sz}`}
+                  >
+                    {sz}
+                  </button>
+                ))}
+              </div>
+
+              {/* General Quick Add Button */}
               <button
                 type="button"
                 onClick={handleQuickAdd}
-                className="w-full py-2 bg-white text-[#141410] hover:bg-[#141410] hover:text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] rounded-xs shadow-md transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-white hover:bg-[#0e0e0c] text-[#0e0e0c] hover:text-white text-[10px] font-sans font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-1.5"
               >
                 <ShoppingBag size={12} />
-                <span>Quick Add</span>
+                <span>QUICK ADD TO BAG</span>
               </button>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Product Meta: Clean, Vibrant Fashion Typography */}
+      <div className="pt-3 pb-2 px-1 flex flex-col flex-1 justify-between bg-white">
+        <div>
+          <p className="text-[10px] font-sans font-medium tracking-[0.2em] uppercase text-[#7a786f] truncate mb-1">
+            {fabric}
+          </p>
+          <Link
+            to={`/products/${id}`}
+            className="font-serif text-[14px] sm:text-[15px] font-semibold text-[#141410] hover:text-[#c5a059] transition-colors line-clamp-1 leading-snug"
+          >
+            {title}
+          </Link>
+        </div>
+
+        <div className="flex items-baseline gap-2 mt-2">
+          <span className="text-[13px] sm:text-[14px] font-mono font-bold text-[#141410]">
+            PKR {(discountPrice || price).toLocaleString()}
+          </span>
+          {discountPrice && discountPrice < price && (
+            <span className="text-[11px] font-mono text-[#8a887e] line-through">
+              PKR {price.toLocaleString()}
+            </span>
           )}
         </div>
-
-        {/* Product Meta Details */}
-        <div className="pt-3 pb-2 px-1 flex flex-col flex-1 justify-between">
-          <div>
-            <p className="text-[10px] sm:text-[11px] font-mono tracking-wider uppercase text-[#4b5563] font-semibold truncate mb-1">
-              {fabric}
-            </p>
-            <Link
-              to={`/products/${id}`}
-              className="text-xs sm:text-sm font-semibold text-[#111827] hover:underline line-clamp-1 group-hover:text-black transition-colors"
-            >
-              {title}
-            </Link>
-          </div>
-
-          <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-xs sm:text-sm font-bold text-[#111827] font-mono">
-              PKR {(discountPrice || price).toLocaleString()}
-            </span>
-            {discountPrice && discountPrice < price && (
-              <span className="text-[10px] sm:text-xs text-gray-500 line-through font-mono">
-                PKR {price.toLocaleString()}
-              </span>
-            )}
-          </div>
-        </div>
       </div>
-    </>
+    </div>
   );
 }
+

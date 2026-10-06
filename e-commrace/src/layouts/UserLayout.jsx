@@ -24,11 +24,12 @@ import HeaderSearchModal from "../components/HeaderSearchModal";
 import toast from "react-hot-toast";
 
 const TOP_TICKER_MESSAGES = [
-  "✨ FREE NATIONWIDE EXPRESS SHIPPING ON ALL ORDERS ABOVE PKR 5,000",
-  "🌸 NEW ARRIVALS: FESTIVE LAWN & LUXURY PRET COLLECTION '26 LIVE NOW",
-  "💳 MULTI-PAYMENT: CASH ON DELIVERY, PAYFAST, EASYPAISA, JAZZCASH & CARDS",
-  "🔄 7-DAY EASY SIZE & STYLE EXCHANGES ACROSS ALL OUTLETS IN PAKISTAN",
+  "Complimentary Express Nationwide Delivery on all orders above PKR 5,000",
+  "Atelier Spring / Festive Lawn & Luxury Pret '26 Drop is now live",
+  "Seamless Gateways: Cash on Delivery, PayFast, EasyPaisa, JazzCash & Cards",
+  "7-Day Doorstep Size & Style Exchange Nationwide Across Pakistan",
 ];
+
 
 export default function UserLayout() {
   const dispatch = useDispatch();
@@ -136,21 +137,22 @@ export default function UserLayout() {
     <div className={`${location.pathname !== "/" ? "store-secondary-layout" : ""} min-h-screen flex flex-col bg-[#fafaf8] text-[#141410] font-sans selection:bg-[#141410] selection:text-white`}>
 
       {/* ── Top Announcement Ticker Bar ── */}
-      <div className="bg-[#141410] text-[#f5f5f0] text-[10px] sm:text-[11px] font-medium tracking-[0.2em] uppercase py-2 px-4 text-center overflow-hidden flex items-center justify-center relative z-40 border-b border-[#252520]">
-        <div className="animate-in fade-in duration-500 truncate max-w-4xl">
-          {TOP_TICKER_MESSAGES[tickerIndex]}
+      <div className="bg-[#0e0e0c] text-[#dedcd3] text-[10px] sm:text-[11px] font-sans font-medium tracking-[0.24em] uppercase py-2 px-4 text-center overflow-hidden flex items-center justify-center relative z-40 border-b border-[#22221c]">
+        <div className="animate-in fade-in duration-500 truncate max-w-4xl flex items-center justify-center gap-2">
+          <span className="text-[#c5a059] text-[10px]">✦</span>
+          <span>{TOP_TICKER_MESSAGES[tickerIndex]}</span>
         </div>
       </div>
 
       {/* ── Main Luxury Header ── */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#e8e8e0] shadow-xs transition-shadow">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#eae7dc] shadow-xs transition-shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
 
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-[#141410] hover:text-[#78786a] transition-colors"
+              className="lg:hidden p-2 -ml-2 text-[#141410] hover:text-[#9c7830] transition-colors"
               aria-label="Open navigation menu"
             >
               <Menu size={24} />
@@ -164,7 +166,7 @@ export default function UserLayout() {
             </div>
 
             {/* Desktop Navigation Links with Mega-Menu Trigger */}
-            <nav className="hidden lg:flex items-center space-x-4 xl:space-x-6 h-full">
+            <nav className="hidden lg:flex items-center space-x-5 xl:space-x-7 h-full">
               {dynamicNavCategories.map((cat) => (
                 <div
                   key={cat.key}
@@ -177,10 +179,10 @@ export default function UserLayout() {
                 >
                   <Link
                     to={cat.url}
-                    className={`text-xs font-semibold uppercase tracking-[0.18em] transition-all flex items-center gap-1.5 py-3 ${
+                    className={`text-[11.5px] font-sans font-semibold uppercase tracking-[0.2em] transition-all flex items-center gap-1.5 py-3 ${
                       cat.isSale
-                        ? "text-rose-600 font-bold hover:text-rose-800"
-                        : "text-[#141410] hover:text-[#8e8e7e]"
+                        ? "text-[#991b1b] font-bold hover:text-black"
+                        : "text-[#141410] hover:text-[#9c7830]"
                     }`}
                   >
                     <span>{cat.label}</span>
@@ -488,70 +490,72 @@ export default function UserLayout() {
       </main>
 
       {/* ── Premium E-Commerce Footer ── */}
-      <footer className="bg-[#141410] text-[#f5f5f0] border-t border-[#252520]">
+      <footer className="bg-[#0e0e0c] text-[#f5f5f0] border-t border-[#22221c]">
         
-        {/* 1. Value Pillars Strip */}
-        <div className="border-b border-white/10 bg-[#191914]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center sm:text-left">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#d4af37] flex-shrink-0">
-                  <Truck size={18} />
+        {/* 1. Value Pillars Strip (For catalog and interior pages) */}
+        {location.pathname !== "/" && (
+          <div className="border-b border-white/10 bg-[#131310]">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#c5a059] flex-shrink-0">
+                    <Truck size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                      Free Express Shipping
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Nationwide on orders over PKR 5,000 via TCS
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                    Free Express Shipping
-                  </h4>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    Nationwide on orders over PKR 5,000 via TCS
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#d4af37] flex-shrink-0">
-                  <RotateCcw size={18} />
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#c5a059] flex-shrink-0">
+                    <RotateCcw size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                      7-Day Easy Exchange
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Hassle-free size & design exchanges nationwide
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                    7-Day Easy Exchange
-                  </h4>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    Hassle-free size & design exchanges nationwide
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#d4af37] flex-shrink-0">
-                  <ShieldCheck size={18} />
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#c5a059] flex-shrink-0">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                      100% Authentic Fabric
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Pure luxury lawn, raw silk, and cambric
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                    100% Authentic Fabric
-                  </h4>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    Pure luxury lawn, raw silk, and cambric
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#d4af37] flex-shrink-0">
-                  <Lock size={18} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                    Secure 256-Bit Checkout
-                  </h4>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    PayFast, COD & instant digital payments
-                  </p>
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#c5a059] flex-shrink-0">
+                    <Lock size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                      Secure 256-Bit Checkout
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      PayFast, COD & instant digital payments
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 2. Main Footer Links & Newsletter */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">

@@ -1,31 +1,28 @@
-import { Sparkles, Truck, ShieldCheck, Tag, RotateCcw, Lock, Flame } from "lucide-react";
-
 export default function LuxuryMarqueeRibbon() {
-  const tickerItems = [
-    { icon: <Sparkles size={14} className="text-[#d4af37]" />, text: "HAUTE COUTURE & LUXURY PRET COLLECTION '26 LIVE" },
-    { icon: <Truck size={14} className="text-blue-400" />, text: "SAME-DAY 4-HOUR BIKER DELIVERY IN LHR • KHI • ISB" },
-    { icon: <Tag size={14} className="text-rose-400" />, text: "USE VOUCHER 'LUXURY10' FOR FLAT 10% OFF AT CHECKOUT" },
-    { icon: <Lock size={14} className="text-emerald-400" />, text: "256-BIT SSL ENCRYPTED GATEWAYS: COD, EASYPAISA, JAZZCASH & CARDS" },
-    { icon: <ShieldCheck size={14} className="text-amber-400" />, text: "100% PURE AUTHENTIC COMBED CAMBRIC & RAW SILK FABRICS" },
-    { icon: <RotateCcw size={14} className="text-purple-400" />, text: "7-DAY COMPLIMENTARY DOORSTEP SIZE EXCHANGE NATIONWIDE" },
-    { icon: <Flame size={14} className="text-amber-500" />, text: "FESTIVE EID ATELIER: BESPOKE HANDCRAFTED ZARI & DABKA" },
+  const marqueeStatements = [
+    "ATELIER SPRING / SUMMER '26 DROP IS LIVE",
+    "PURE EGYPTIAN COMBED CAMBRIC & LUXURY RAW SILK",
+    "COMPLIMENTARY EXPRESS DISPATCH ACROSS PAKISTAN",
+    "BESPOKE HAND-EMBELLISHED ZARI & KORA DABKA",
+    "7-DAY EFFORTLESS DOORSTEP SIZE EXCHANGE",
+    "SEAMLESS COD & ENCRYPTED DIGITAL PAYMENTS",
   ];
 
   return (
-    <div className="bg-[#141410] border-y border-[#2a2a22] py-3.5 overflow-hidden text-white relative select-none">
+    <div className="bg-[#0e0e0c] border-y border-[#262620] py-3 overflow-hidden text-[#e8e6df] relative select-none">
       <div className="flex w-max animate-marquee hover:[animation-play-state:paused]">
         {/* Render twice for continuous seamless infinite loop */}
-        {[...tickerItems, ...tickerItems].map((item, idx) => (
+        {[...marqueeStatements, ...marqueeStatements].map((statement, idx) => (
           <div
             key={idx}
-            className="flex items-center gap-2.5 mx-6 text-xs font-mono font-bold tracking-widest uppercase text-gray-200 flex-shrink-0"
+            className="flex items-center gap-6 mx-6 text-[10.5px] sm:text-[11.5px] font-sans font-medium tracking-[0.26em] uppercase flex-shrink-0 text-[#dedcd3]"
           >
-            {item.icon}
-            <span>{item.text}</span>
-            <span className="text-[#d4af37] font-serif font-normal text-sm ml-4">✦</span>
+            <span className="text-[#c5a059] text-xs">✦</span>
+            <span>{statement}</span>
           </div>
         ))}
       </div>
     </div>
   );
 }
+

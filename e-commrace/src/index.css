@@ -22,6 +22,19 @@
   }
 }
 
+/* Luxury Fashion Typography Utilities */
+.font-cinzel {
+  font-family: 'Cinzel', 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-garamond {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-dm {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 /* Animations & Luxury utilities */
 @keyframes ticker {
   0% { transform: translateX(0); }
@@ -31,6 +44,22 @@
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+@keyframes luxuryFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes goldShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .animate-ticker {
@@ -45,6 +74,10 @@
 }
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+.animate-luxury-fade {
+  animation: luxuryFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Hide scrollbar utility */
@@ -65,21 +98,30 @@
   animation: pulseGlow 3s ease-in-out infinite;
 }
 
+/* Subtle image zoom container */
+.fashion-card-image {
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.group:hover .fashion-card-image {
+  transform: scale(1.05);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1eb;
+  background: #f4f3ed;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c5c5b5;
+  background: #cfcdbe;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #8e8e7e;
+  background: #999688;
 }
+
 @media (max-width: 640px) {
   .store-secondary-layout .storefront-brand { min-width: 0; flex: 1; }
   .store-secondary-layout .storefront-brand > a { min-width: 0; }

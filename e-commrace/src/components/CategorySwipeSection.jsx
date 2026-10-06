@@ -1,50 +1,43 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { optimizeImage } from "../utils/imageOptimizer";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ArrowRight,
-  Sparkles,
-  Flame,
-  ArrowUpRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 
 export default function CategorySwipeSection({ categories = [] }) {
   const containerRef = useRef(null);
 
   const scroll = (direction) => {
     if (!containerRef.current) return;
-    const offset = direction === "left" ? -380 : 380;
+    const offset = direction === "left" ? -400 : 400;
     containerRef.current.scrollBy({ left: offset, behavior: "smooth" });
   };
 
   if (!categories || categories.length === 0) return null;
 
   return (
-    <section className="py-14 sm:py-20 bg-[#fafaf8] relative overflow-hidden border-b border-[#e8e8e0] select-none">
+    <section className="py-20 sm:py-28 bg-[#fafaf8] relative overflow-hidden select-none border-b border-[#eae7dc]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono font-bold tracking-[0.25em] text-[#d4af37] uppercase mb-1.5">
-              <Sparkles size={14} />
-              <span>Signature Collections</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl text-[#141410] tracking-tight">
-              Curated Wardrobe Categories
+        
+        {/* Section Header: Editorial & Vibrant */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+          <div className="max-w-xl">
+            <span className="text-[11px] font-sans font-semibold tracking-[0.28em] text-[#9c7830] uppercase block mb-2.5">
+              CURATED CAPSULES
+            </span>
+            <h2 className="font-serif text-3xl sm:text-5xl text-[#0e0e0c] tracking-tight leading-[1.08] font-medium">
+              Explore By Category
             </h2>
-            <p className="text-xs sm:text-sm text-[#4b5563] mt-2 max-w-lg">
-              Explore our handcrafted silhouettes and exclusive pret edits tailored with pure organic fabrics.
+            <p className="text-sm text-[#66655c] mt-3 font-light leading-relaxed">
+              Archival silhouettes tailored in artisanal combed cambric, airy festive lawn, and hand-finished raw silk.
             </p>
           </div>
 
-          {/* Clean Controls: Left/Right Chevrons & Directory Link */}
+          {/* Clean Editorial Navigation Controls */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => scroll("left")}
-              className="w-10 h-10 rounded-full border border-gray-300 bg-white hover:bg-[#141410] hover:text-white flex items-center justify-center transition-all shadow-xs active:scale-95"
+              className="w-11 h-11 rounded-full border border-[#d6d3c8] bg-white hover:bg-[#0e0e0c] hover:text-white text-[#0e0e0c] flex items-center justify-center transition-all duration-300 shadow-xs active:scale-95 cursor-pointer"
               aria-label="Previous categories"
             >
               <ChevronLeft size={18} />
@@ -53,7 +46,7 @@ export default function CategorySwipeSection({ categories = [] }) {
             <button
               type="button"
               onClick={() => scroll("right")}
-              className="w-10 h-10 rounded-full border border-gray-300 bg-white hover:bg-[#141410] hover:text-white flex items-center justify-center transition-all shadow-xs active:scale-95"
+              className="w-11 h-11 rounded-full border border-[#d6d3c8] bg-white hover:bg-[#0e0e0c] hover:text-white text-[#0e0e0c] flex items-center justify-center transition-all duration-300 shadow-xs active:scale-95 cursor-pointer"
               aria-label="Next categories"
             >
               <ChevronRight size={18} />
@@ -61,9 +54,9 @@ export default function CategorySwipeSection({ categories = [] }) {
 
             <Link
               to="/products"
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#141410] hover:bg-[#d4af37] text-white hover:text-black font-bold text-xs uppercase tracking-wider rounded-sm transition-colors shadow-sm ml-1"
+              className="hidden sm:inline-flex items-center gap-2 px-5 py-3 border border-[#0e0e0c] bg-transparent hover:bg-[#0e0e0c] text-[#0e0e0c] hover:text-white text-xs font-sans font-semibold tracking-[0.2em] uppercase transition-all duration-300 ml-2"
             >
-              <span>View All ({categories.length})</span>
+              <span>View All</span>
               <ArrowRight size={13} />
             </Link>
           </div>
@@ -73,7 +66,7 @@ export default function CategorySwipeSection({ categories = [] }) {
       {/* Swipeable Category Track */}
       <div
         ref={containerRef}
-        className="flex gap-5 overflow-x-auto pb-6 pt-2 scrollbar-none px-4 sm:px-8 max-w-7xl mx-auto scroll-smooth"
+        className="flex gap-6 overflow-x-auto pb-4 scrollbar-none px-4 sm:px-8 max-w-7xl mx-auto scroll-smooth"
       >
         {categories.map((cat, idx) => {
           const catSlug = cat.slug || cat._id || `cat-${idx}`;
@@ -81,70 +74,56 @@ export default function CategorySwipeSection({ categories = [] }) {
             cat.image?.url ||
             cat.image ||
             "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800&q=85";
-          const displayIdx = idx + 1;
+          const displayIdx = String(idx + 1).padStart(2, "0");
 
           return (
             <div
               key={cat._id || catSlug}
-              className="w-[270px] sm:w-[300px] md:w-[330px] flex-shrink-0 group"
+              className="w-[280px] sm:w-[320px] md:w-[360px] flex-shrink-0 group"
             >
               <Link
                 to={`/products?category=${catSlug}`}
                 draggable="false"
-                className="block relative aspect-[3/4.4] overflow-hidden rounded-2xl bg-[#141410] border border-[#e8e8e0] group-hover:border-[#d4af37] shadow-sm hover:shadow-2xl transition-all duration-500 transform group-hover:-translate-y-1"
+                className="block relative aspect-[3/4.3] overflow-hidden bg-[#141410] shadow-sm transition-all duration-500"
               >
-                {/* Category Photoshoot Photo */}
+                {/* Category Photography with Smooth Zoom */}
                 <img
-                  src={optimizeImage(imgUrl, { width: 640 })}
+                  src={optimizeImage(imgUrl, { width: 800 })}
                   alt={cat.name}
                   draggable="false"
                   loading="lazy"
-                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700 ease-out pointer-events-none"
+                  className="w-full h-full object-cover object-top transition-transform duration-1000 ease-out group-hover:scale-108 pointer-events-none"
                 />
 
-                {/* Vignette Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent group-hover:from-black/95 transition-colors duration-500" />
+                {/* Elegant Vignette Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10 group-hover:from-black/90 transition-colors duration-500" />
 
-                {/* Top Floating Chips */}
-                <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-                  <span className="px-2.5 py-1 bg-black/60 backdrop-blur-md border border-white/20 text-[#d4af37] font-mono text-[9px] font-bold uppercase tracking-widest rounded-full">
-                    {cat.eyebrow || `COLLECTION 0${displayIdx}`}
+                {/* Top Numbering */}
+                <div className="absolute top-5 left-5 z-10">
+                  <span className="font-mono text-[11px] font-medium tracking-widest text-white/80 uppercase">
+                    CHAPTER {displayIdx}
                   </span>
-                  {cat.isHot && (
-                    <span className="px-2 py-0.5 bg-amber-500 text-white font-mono text-[9px] font-bold rounded-full shadow-sm flex items-center gap-1">
-                      <Flame size={10} /> HOT DROP
-                    </span>
-                  )}
                 </div>
 
-                {/* Bottom Content & Interactive Explore CTA */}
-                <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col justify-end text-white z-10">
-                  <p className="text-[11px] font-mono text-[#d4af37] uppercase tracking-wider mb-1">
-                    {cat.subtitle || "Eastern Pret & Luxury Lawn"}
-                  </p>
+                {/* Bottom Content */}
+                <div className="absolute inset-x-0 bottom-0 p-6 sm:p-7 flex flex-col justify-end text-white z-10">
+                  <span className="text-[10px] font-sans font-medium tracking-[0.24em] text-[#d4af37] uppercase mb-1.5">
+                    {cat.subtitle || "SIGNATURE ATELIER"}
+                  </span>
 
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight group-hover:text-[#d4af37] transition-colors">
+                  <h3 className="font-serif text-2xl sm:text-3xl font-normal text-white tracking-tight leading-tight group-hover:text-[#d4af37] transition-colors duration-300">
                     {cat.name}
                   </h3>
 
-                  <p className="text-xs text-gray-300 mt-1.5 line-clamp-2 font-light opacity-90 leading-relaxed">
-                    {cat.description ||
-                      "Handcrafted signature eastern silhouettes tailored with pure organic fabrics."}
-                  </p>
-
-                  <div className="pt-4 flex items-center justify-between border-t border-white/15 mt-3">
-                    <span className="text-[11px] font-mono text-gray-300">
+                  <div className="pt-3 flex items-center justify-between border-t border-white/20 mt-3.5">
+                    <span className="text-[11px] font-sans tracking-wider text-white/70">
                       Explore Collection
                     </span>
-                    <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-[#d4af37] group-hover:translate-x-1 transition-transform">
-                      <span>Browse</span>
-                      <ArrowUpRight size={14} />
+                    <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-[#c5a059] group-hover:text-[#0e0e0c] flex items-center justify-center transition-all duration-300">
+                      <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
                 </div>
-
-                {/* Gold Foil Border Glow */}
-                <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#d4af37]/60 pointer-events-none transition-colors duration-500" />
               </Link>
             </div>
           );
@@ -153,3 +132,4 @@ export default function CategorySwipeSection({ categories = [] }) {
     </section>
   );
 }
+
