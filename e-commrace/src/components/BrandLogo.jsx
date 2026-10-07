@@ -118,7 +118,7 @@ export default function BrandLogo({
               <p
                 className={`text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.35em] uppercase ${taglineColor} mt-1.5`}
               >
-                FASHION THAT SPEAKS
+                FASHION FOR PASSION
               </p>
               <div className="flex items-center justify-center gap-2 mt-1.5 opacity-60">
                 <span className="w-8 h-[1px] bg-[#d4af37]" />
@@ -149,7 +149,7 @@ export default function BrandLogo({
           <span
             className={`text-[8.5px] sm:text-[9.5px] font-sans font-semibold tracking-[0.26em] uppercase ${taglineColor} mt-1`}
           >
-            FASHION THAT SPEAKS
+            FASHION FOR PASSION
           </span>
         )}
       </div>

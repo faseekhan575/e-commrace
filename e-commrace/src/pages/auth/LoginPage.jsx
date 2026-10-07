@@ -187,7 +187,7 @@ export default function LoginPage() {
             to Clothing Den.
           </p>
           <p className="text-white/60 text-sm leading-relaxed max-w-xs font-serif">
-            Fashion that speaks — eastern couture and contemporary luxury silhouettes.
+            Fashion for passion — eastern couture and contemporary luxury silhouettes.
           </p>
         </div>
 

@@ -6,20 +6,20 @@ import React from "react";
  * Features:
  * - Sequenced stroke drawing of concentric golden arches
  * - Subtle pulsing spotlight on the center couture dress mannequin
- * - Gold shimmering "CLOTHING DEN" & "FASHION THAT SPEAKS" typography
+ * - Gold shimmering "CLOTHING DEN" & "FASHION FOR PASSION" typography
  *
  * Props:
  * - size: 'sm' | 'md' | 'lg' | 'xl' (default: 'md')
  * - variant: 'fullscreen' | 'inline' | 'icon' (default: 'inline')
  * - text: string (default: "CLOTHING DEN")
- * - subtitle: string (default: "FASHION THAT SPEAKS")
+ * - subtitle: string (default: "FASHION FOR PASSION")
  * - theme: 'dark' | 'light' (default: 'light')
  */
 export default function BrandLoader({
   size = "md",
   variant = "inline",
   text = "CLOTHING DEN",
-  subtitle = "FASHION THAT SPEAKS",
+  subtitle = "FASHION FOR PASSION",
   theme = "light",
   className = "",
 }) {
