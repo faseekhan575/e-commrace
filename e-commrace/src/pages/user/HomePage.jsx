@@ -7,7 +7,6 @@ import { fetchActiveSpotlights } from "../../store/spotlightSlice";
 import { addToCart } from "../../store/cartSlice";
 import ProductCard from "../../components/ProductCard";
 import CategorySwipeSection from "../../components/CategorySwipeSection";
-import LuxuryMarqueeRibbon from "../../components/LuxuryMarqueeRibbon";
 import { CLOTHING_PRODUCTS, CLOTHING_CATEGORIES } from "../../data/clothingData";
 import { DEFAULT_BANNERS } from "../../data/bannerData";
 import { optimizeImage } from "../../utils/imageOptimizer";
@@ -163,61 +162,61 @@ export default function HomePage() {
                 }`}
               />
 
-              {/* Dual Filmic Vignette: Keeps Pakistani Embroidery Vibrant & Text Pristine */}
+              {/* High-Contrast Vignette for Razor-Sharp Text & Embroidery Vibrance */}
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(13,13,11,0.3) 0%, rgba(13,13,11,0.2) 40%, rgba(13,13,11,0.85) 100%), linear-gradient(90deg, rgba(13,13,11,0.85) 0%, rgba(13,13,11,0.4) 50%, transparent 100%)",
+                    "linear-gradient(180deg, rgba(10,10,8,0.4) 0%, rgba(10,10,8,0.2) 35%, rgba(10,10,8,0.92) 100%), linear-gradient(90deg, rgba(10,10,8,0.9) 0%, rgba(10,10,8,0.45) 50%, transparent 100%)",
                 }}
               />
 
-              {/* Content Box */}
-              <div className="absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-end pb-20 sm:pb-28 z-20">
+              {/* Vibrant Front Content Box */}
+              <div className="absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-end pb-16 sm:pb-24 z-20">
                 <div className="max-w-2xl space-y-4 sm:space-y-6">
                   
-                  {/* Whispering Atelier Crest Tag */}
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-8 h-[1px] bg-[#c5a059]" />
-                    <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.32em] uppercase text-[#d4af37]">
+                  {/* Vibrant Luxury Crest Tag */}
+                  <div className="flex items-center gap-3">
+                    <span className="w-10 h-[2px] bg-[#d4af37]" />
+                    <span className="text-[10px] sm:text-[11px] font-sans font-extrabold tracking-[0.32em] uppercase bg-[#d4af37] text-[#0e0e0c] px-3.5 py-1 rounded-xs shadow-lg">
                       {slide.badge || slide.tagline || "ROYAL ATELIER EDIT '26"}
                     </span>
                   </div>
 
-                  {/* Majestic Headline */}
-                  <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white font-normal tracking-tight leading-[1.0] text-balance">
+                  {/* Majestic Vibrant Headline */}
+                  <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white font-medium tracking-tight leading-[1.03] text-balance drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
                     {slide.title}
                   </h1>
 
-                  {/* Poetic Supporting Copy */}
-                  <p className="text-xs sm:text-sm md:text-base text-[#e5e3dc] font-light max-w-xl leading-relaxed font-sans opacity-90">
+                  {/* High-Contrast Vibrant Supporting Copy */}
+                  <p className="text-sm sm:text-base md:text-lg text-white font-normal max-w-xl leading-relaxed font-sans drop-shadow-md">
                     {slide.subtitle || "A royal symphony of intricate gold zari necklines, pure cambric weaves, and delicate organza dupattas hand-tailored for effortless grace."}
                   </p>
 
-                  {/* Floating Garment Craftsmanship Pill */}
-                  <div className="hidden sm:inline-flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/15 text-white/90 text-[11px] font-sans tracking-wide">
-                    <span className="text-[#c5a059] font-mono">✦</span>
-                    <span>Fabric: <strong>{slide.fabric || "Pure Embroidered Lawn"}</strong></span>
+                  {/* Garment Details Pill */}
+                  <div className="hidden sm:inline-flex items-center gap-3 px-4 py-2 bg-black/70 backdrop-blur-md border border-white/30 text-white text-[11px] font-sans tracking-wide font-medium shadow-md">
+                    <span className="text-[#d4af37] font-mono">✦</span>
+                    <span>Fabric: <strong className="text-[#f5d77f]">{slide.fabric || "Pure Embroidered Lawn"}</strong></span>
                     <span className="opacity-40">•</span>
-                    <span>Origin: <strong>{slide.origin || "Lahore Atelier"}</strong></span>
+                    <span>Origin: <strong className="text-white">{slide.origin || "Lahore Atelier"}</strong></span>
                   </div>
 
-                  {/* Dual Luxury Action Buttons */}
-                  <div className="pt-2 flex flex-wrap items-center gap-3.5">
+                  {/* Vibrant Dual Action Buttons */}
+                  <div className="pt-2 flex flex-wrap items-center gap-4">
                     <Link
                       to={slide.ctaLink || "/products"}
-                      className="px-8 py-4 bg-white hover:bg-[#c5a059] text-[#0e0e0c] hover:text-white font-sans font-bold text-[11px] sm:text-xs uppercase tracking-[0.24em] transition-all duration-300 shadow-2xl flex items-center gap-2.5 group"
+                      className="px-8 py-4 bg-gradient-to-r from-[#d4af37] via-[#f5d77f] to-[#d4af37] hover:brightness-110 text-[#0e0e0c] font-sans font-extrabold text-xs uppercase tracking-[0.24em] transition-all duration-300 shadow-2xl flex items-center gap-2.5 group rounded-xs cursor-pointer"
                     >
-                      <ShoppingBag size={14} />
+                      <ShoppingBag size={15} />
                       <span>{slide.ctaText || "Shop Collection"}</span>
-                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
                     </Link>
 
                     <Link
                       to="/products?category=luxury-pret"
-                      className="px-7 py-4 border border-white/40 hover:border-white text-white font-sans font-semibold text-[11px] sm:text-xs uppercase tracking-[0.22em] transition-all duration-300 hover:bg-white/10 backdrop-blur-xs flex items-center gap-2"
+                      className="px-7 py-4 border-2 border-white hover:bg-white hover:text-black text-white font-sans font-bold text-xs uppercase tracking-[0.22em] transition-all duration-300 backdrop-blur-xs flex items-center gap-2 rounded-xs cursor-pointer"
                     >
-                      <Eye size={14} />
+                      <Eye size={15} />
                       <span>Explore Lookbook</span>
                     </Link>
                   </div>
@@ -227,187 +226,27 @@ export default function HomePage() {
           );
         })}
 
-        {/* Right-Side Interactive Slide Deck (Miniature Pakistani Suit Model Cards) */}
-        <div className="absolute bottom-8 right-6 sm:right-12 z-30 flex flex-col items-end gap-4">
-          
-          {/* Interactive Slide Preview Cards for Instant Click */}
-          <div className="hidden md:flex items-center gap-3 bg-black/50 backdrop-blur-md p-2 rounded-xs border border-white/10">
-            {activeBanners.map((b, i) => {
-              const miniImg = b.image?.url || b.image || "/banners/pakistani-festive-lawn.jpg";
-              const isActive = i === heroSlide;
-
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setHeroSlide(i)}
-                  className={`flex items-center gap-2.5 p-1.5 transition-all duration-300 cursor-pointer ${
-                    isActive
-                      ? "bg-white/15 border border-[#c5a059] shadow-lg"
-                      : "opacity-60 hover:opacity-100 border border-transparent"
-                  }`}
-                >
-                  <img
-                    src={miniImg}
-                    alt={b.title}
-                    className="w-10 h-10 object-cover object-top rounded-xs"
-                  />
-                  <div className="text-left pr-2">
-                    <span className="font-mono text-[9px] text-[#c5a059] block tracking-widest">
-                      0{i + 1}
-                    </span>
-                    <span className="text-[10px] font-sans font-medium text-white line-clamp-1 max-w-[90px]">
-                      {b.title?.split(" ")[0]} Edit
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Minimal Controls & Counter */}
-          <div className="flex items-center gap-4">
-            <div className="font-mono text-xs text-white/80 tracking-widest">
-              <span className="text-white font-bold">0{heroSlide + 1}</span>
-              <span className="mx-1.5 opacity-40">/</span>
-              <span className="opacity-60">0{activeBanners.length}</span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setHeroSlide((prev) => (prev - 1 + activeBanners.length) % activeBanners.length)}
-                className="w-9 h-9 rounded-full border border-white/20 bg-black/40 hover:bg-white hover:text-black text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95"
-                aria-label="Previous Slide"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                onClick={() => setHeroSlide((prev) => (prev + 1) % activeBanners.length)}
-                className="w-9 h-9 rounded-full border border-white/20 bg-black/40 hover:bg-white hover:text-black text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95"
-                aria-label="Next Slide"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
+        {/* Minimal Non-Intrusive Auto-Slide Progress Indicators */}
+        <div className="absolute bottom-6 left-6 sm:left-12 z-30 flex items-center gap-2 pointer-events-none">
+          {activeBanners.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1 rounded-full transition-all duration-700 ${
+                i === heroSlide ? "w-8 bg-[#d4af37]" : "w-2 bg-white/40"
+              }`}
+            />
+          ))}
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. UNDERSTATED LUXURY MARQUEE RIBBON
-          Gold starbursts, refined rhythm, zero carnival colors
-          ───────────────────────────────────────────────────────────── */}
-      <LuxuryMarqueeRibbon />
-
-      {/* ─────────────────────────────────────────────────────────────
-          3. EXPLORE BY CATEGORY: INFINITE CONTINUOUS SWIPE STREAM
+          2. EXPLORE BY CATEGORY: INFINITE CONTINUOUS SWIPE STREAM
           Unlimited auto-swiping marquee, never stops, pause on hover,
           every single card is 100% clickable with Pakistani suit models!
           ───────────────────────────────────────────────────────────── */}
       <CategorySwipeSection categories={categories} />
 
-      {/* ─────────────────────────────────────────────────────────────
-          4. BRAND NEW: THE GRAND DUAL LOOKBOOK EDIT (HIGH-FASHION SPLIT)
-          Two high-contrast editorial campaign banners side-by-side
-          ───────────────────────────────────────────────────────────── */}
-      <section className="py-20 sm:py-28 bg-white border-b border-[#eae7dc]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-            <div>
-              <span className="text-[11px] font-sans font-semibold tracking-[0.28em] text-[#9c7830] uppercase block mb-2.5">
-                EDITORIAL HIGHLIGHTS
-              </span>
-              <h2 className="font-serif text-3xl sm:text-5xl text-[#0e0e0c] tracking-tight leading-[1.08] font-medium">
-                The Festive & Bridal Chapters
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-[#66655c] max-w-md font-light leading-relaxed">
-              Explore our two signature design pillars: vibrant daylight festive lawn and regal candlelight evening velvet formals.
-            </p>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            
-            {/* Card 1: Festive Lawn (7 Cols) */}
-            <div className="lg:col-span-7 relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden group bg-[#111] shadow-lg">
-              <img
-                src="/banners/pakistani-festive-lawn.jpg"
-                alt="Pakistani Festive Lawn Model"
-                className="w-full h-full object-cover object-top transition-transform duration-1000 ease-out group-hover:scale-106"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-              
-              <div className="absolute top-6 left-6 z-10">
-                <span className="text-[10px] font-mono tracking-widest uppercase bg-white/90 text-black px-3 py-1 font-bold">
-                  CHAPTER 01 • SUMMER LAWN
-                </span>
-              </div>
-
-              <div className="absolute inset-x-0 bottom-0 p-8 sm:p-10 text-white z-10 flex flex-col justify-end space-y-3">
-                <span className="text-[11px] font-sans font-medium tracking-[0.24em] text-[#d4af37] uppercase">
-                  UNSTITCHED & READY TO WEAR
-                </span>
-                <h3 className="font-serif text-3xl sm:text-4xl text-white font-normal leading-tight">
-                  Festive Embroidered Lawn Suits
-                </h3>
-                <p className="text-xs sm:text-sm text-[#e5e3dc] max-w-lg font-light leading-relaxed">
-                  Pure cambric shirts featuring intricate floral threadwork, laser-cut schiffli daman, and digitally printed tissue silk dupattas.
-                </p>
-                <div className="pt-2 flex items-center justify-between">
-                  <span className="font-serif text-lg text-white">Starting from PKR 7,600</span>
-                  <Link
-                    to="/products?category=festive-collection"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#c5a059] text-black hover:text-white font-sans font-bold text-xs uppercase tracking-[0.2em] transition-all duration-300"
-                  >
-                    <span>Shop Lawn Edit</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Velvet Formals (5 Cols) */}
-            <div className="lg:col-span-5 relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-auto overflow-hidden group bg-[#111] shadow-lg">
-              <img
-                src="/banners/pakistani-velvet-couture.jpg"
-                alt="Pakistani Velvet Couture Model"
-                className="w-full h-full object-cover object-top transition-transform duration-1000 ease-out group-hover:scale-106"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
-              
-              <div className="absolute top-6 left-6 z-10">
-                <span className="text-[10px] font-mono tracking-widest uppercase bg-[#c5a059] text-black px-3 py-1 font-bold">
-                  CHAPTER 02 • ROYAL VELVET
-                </span>
-              </div>
-
-              <div className="absolute inset-x-0 bottom-0 p-8 sm:p-10 text-white z-10 flex flex-col justify-end space-y-3">
-                <span className="text-[11px] font-sans font-medium tracking-[0.24em] text-[#d4af37] uppercase">
-                  BRIDAL & FORMAL PRET
-                </span>
-                <h3 className="font-serif text-3xl sm:text-4xl text-white font-normal leading-tight">
-                  Crimson Velvet & Raw Silk Formals
-                </h3>
-                <p className="text-xs sm:text-sm text-[#e5e3dc] font-light leading-relaxed">
-                  Micro-velvet 9000 enriched with hand-worked dabka tilla, antique kora neckline, and scalloped tissue borders.
-                </p>
-                <div className="pt-2 flex items-center justify-between">
-                  <span className="font-serif text-lg text-white">Starting from PKR 10,990</span>
-                  <Link
-                    to="/products?category=luxury-pret"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#c5a059] hover:bg-white text-black font-sans font-bold text-xs uppercase tracking-[0.2em] transition-all duration-300"
-                  >
-                    <span>Explore Formals</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
 
       {/* ─────────────────────────────────────────────────────────────
           5. SIGNATURE CREATIONS & NEW DROPS (INTERACTIVE PRODUCT SHOWCASE)
@@ -705,79 +544,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          9. SEEN IN CLOTHING DEN (EDITORIAL COMMUNITY LOOKBOOK)
-          Minimalist, high-fashion styling showcase
-          ───────────────────────────────────────────────────────────── */}
-      <section className="py-20 sm:py-28 bg-[#fafaf8] border-b border-[#eae7dc]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-            <div>
-              <span className="text-[11px] font-sans font-semibold tracking-[0.28em] text-[#9c7830] uppercase block mb-2.5">
-                #CLOTHINGDENWOMEN
-              </span>
-              <h2 className="font-serif text-3xl sm:text-5xl text-[#0e0e0c] tracking-tight leading-[1.08] font-medium">
-                Styled Across the World
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-[#66655c] max-w-sm font-light">
-              Tag @clothingden on Instagram for an editorial feature in our seasonal lookbook.
-            </p>
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-            {[
-              {
-                img: "/banners/pakistani-festive-lawn.jpg",
-                city: "Lahore",
-                tag: "Festive Lawn '26",
-              },
-              {
-                img: "/categories/pakistani-raw-silk.jpg",
-                city: "Karachi",
-                tag: "Raw Silk Kurta",
-              },
-              {
-                img: "/banners/pakistani-velvet-couture.jpg",
-                city: "Islamabad",
-                tag: "Velvet Couture",
-              },
-              {
-                img: "/banners/pakistani-festive-pret.jpg",
-                city: "Dubai",
-                tag: "Schiffli Silk",
-              },
-              {
-                img: "/categories/pakistani-pastel-lawn.jpg",
-                city: "London",
-                tag: "Pastel Lawn Set",
-              },
-              {
-                img: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=85",
-                city: "Toronto",
-                tag: "Silk Pret",
-              },
-            ].map((item, idx) => (
-              <div key={idx} className="relative aspect-[3/4] overflow-hidden group bg-[#0e0e0c]">
-                <img
-                  src={optimizeImage(item.img, { width: 500 })}
-                  alt={`Seen in ${item.city}`}
-                  decoding="async"
-                  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
-                />
-                
-                {/* Subtle Hover Reveal */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3.5 text-white">
-                  <span className="text-[9px] font-mono tracking-widest text-[#d4af37] uppercase">{item.city}</span>
-                  <p className="text-xs font-serif text-white font-medium">{item.tag}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </section>
 
       {/* ─────────────────────────────────────────────────────────────
           10. THE ATELIER ASSURANCES (BENEFITS & TRUST)

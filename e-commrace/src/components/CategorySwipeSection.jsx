@@ -1,12 +1,8 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { optimizeImage } from "../utils/imageOptimizer";
-import { ArrowRight, Sparkles, Pause, Play } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function CategorySwipeSection({ categories = [] }) {
-  const [isPaused, setIsPaused] = useState(false);
-  const [speed] = useState("normal"); // "normal" | "slow"
-
   if (!categories || categories.length === 0) return null;
 
   // Duplicate items to ensure a perfectly seamless, infinite marquee loop
@@ -32,27 +28,8 @@ export default function CategorySwipeSection({ categories = [] }) {
             </p>
           </div>
 
-          {/* Controls: Play/Pause stream & View All */}
+          {/* Action: View All Capsules */}
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsPaused(!isPaused)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-[#d6d3c8] bg-white hover:bg-[#0e0e0c] hover:text-white text-[#0e0e0c] text-xs font-sans font-medium tracking-wider transition-all duration-300 shadow-xs active:scale-95 cursor-pointer"
-              title={isPaused ? "Resume continuous swipe" : "Pause swipe"}
-            >
-              {isPaused ? (
-                <>
-                  <Play size={13} className="fill-current" />
-                  <span className="text-[11px] uppercase tracking-widest font-semibold">Resume</span>
-                </>
-              ) : (
-                <>
-                  <Pause size={13} className="fill-current" />
-                  <span className="text-[11px] uppercase tracking-widest font-semibold">Pause Stream</span>
-                </>
-              )}
-            </button>
-
             <Link
               to="/products"
               className="inline-flex items-center gap-2 px-5 py-2.5 border border-[#0e0e0c] bg-transparent hover:bg-[#0e0e0c] text-[#0e0e0c] hover:text-white text-xs font-sans font-semibold tracking-[0.2em] uppercase transition-all duration-300"
@@ -64,22 +41,14 @@ export default function CategorySwipeSection({ categories = [] }) {
         </div>
       </div>
 
-      {/* Infinite Continuous Swipe Track: Never stops, pauses on user hover */}
-      <div
-        className="relative w-full overflow-hidden"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
+      {/* Infinite Continuous Swipe Track: Never stops, smooth continuous flow */}
+      <div className="relative w-full overflow-hidden group">
         {/* Soft edge fades for editorial aesthetic */}
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-20 bg-gradient-to-r from-[#fafaf8] to-transparent z-20 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-20 bg-gradient-to-l from-[#fafaf8] to-transparent z-20 pointer-events-none" />
 
         <div
-          className="animate-category-stream flex gap-6 sm:gap-8 px-4"
-          style={{
-            animationPlayState: isPaused ? "paused" : "running",
-            animationDuration: speed === "slow" ? "55s" : "36s",
-          }}
+          className="animate-category-stream flex gap-6 sm:gap-8 px-4 [animation-duration:36s] group-hover:[animation-play-state:paused]"
         >
           {loopCategories.map((cat, idx) => {
             const catSlug = cat.slug || cat._id || `cat-${idx}`;

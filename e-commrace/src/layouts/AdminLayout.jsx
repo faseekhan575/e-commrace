@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../store/authSlice";
@@ -167,7 +167,12 @@ export default function AdminLayout() {
         </div>
 
         {/* User Identity pill */}
-        <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        {/* User Card in Sidebar */}
+        <Link
+          to="/admin/profile"
+          onClick={() => !isDesktop && setSidebarOpen(false)}
+          className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between hover:bg-slate-100 transition-colors"
+        >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center font-bold text-xs text-white uppercase flex-shrink-0 shadow-sm">
               {user?.fullname ? user.fullname[0] : "A"}
@@ -180,9 +185,9 @@ export default function AdminLayout() {
             </div>
           </div>
           <div className={`w-2 h-2 rounded-full ${socketConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} title={socketConnected ? "Real-time Sockets Connected" : "Sockets Disconnected"} />
-        </div>
+        </Link>
 
-        {/* â”€â”€ Admin PWA Quick Action Card â”€â”€ */}
+        {/* ── Admin PWA Quick Action Card ── */}
         <div className="px-3 pt-3">
           {isStandaloneApp ? (
             <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-[11px] font-mono font-medium">
@@ -219,6 +224,7 @@ export default function AdminLayout() {
                     <Link
                       key={item.to}
                       to={item.to}
+                      onClick={() => !isDesktop && setSidebarOpen(false)}
                       className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all group ${
                         active
                           ? "bg-slate-900 text-white font-bold shadow-md shadow-slate-900/10"

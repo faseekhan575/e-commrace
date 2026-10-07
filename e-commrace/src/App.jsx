@@ -5,6 +5,7 @@ import { clearSession, fetchProfile, sessionTokenRefreshed } from "./store/authS
 import { mergeGuestCart, resetCart } from "./store/cartSlice";
 import { clearWishlist } from "./store/wishlistSlice";
 import CommerceRealtime from "./components/CommerceRealtime";
+import ScrollToTop from "./components/ScrollToTop";
 import toast from "react-hot-toast";
 
 // Layouts
@@ -118,6 +119,7 @@ export default function App() {
   }, [dispatch, userId]);
   return (
     <>
+      <ScrollToTop />
       <PageTransition />
       <CommerceRealtime>
       <Routes>

@@ -24,6 +24,8 @@ import {
 import { filterCatalog, readFilters, SORTS } from "../../utils/catalog";
 import ProductCard from "../../components/ProductCard";
 import ShopFilters from "../../components/ShopFilters";
+import CategoryCircleBar from "../../components/CategoryCircleBar";
+import { CLOTHING_PRODUCTS } from "../../data/clothingData";
 import "../../styles/shop.css";
 
 export default function ProductsPage() {
@@ -235,6 +237,18 @@ export default function ProductsPage() {
     [catalog, filters, categories]
   );
 
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    const allItems = catalog && catalog.length > 0 ? catalog : CLOTHING_PRODUCTS;
+    allItems.forEach((item) => {
+      const catId = item.category?._id || item.category;
+      const catSlug = item.category?.slug;
+      if (catId) counts[catId] = (counts[catId] || 0) + 1;
+      if (catSlug) counts[catSlug] = (counts[catSlug] || 0) + 1;
+    });
+    return counts;
+  }, [catalog]);
+
   const fabrics = useMemo(
     () => [
       ...new Set([
@@ -353,38 +367,33 @@ export default function ProductsPage() {
           </div>
         </header>
 
-        {/* Collection Filter Tabs */}
-        <div className="shop-collection-tabs" aria-label="Browse collections">
-          <button
-            className={!filters.category ? "selected" : ""}
-            onClick={() => update({ category: "" })}
-          >
-            All products
-          </button>
-          {categories.map((item) => (
-            <button
-              key={item._id || item.slug}
-              className={
-                [item._id, item.slug].includes(filters.category)
-                  ? "selected"
-                  : ""
-              }
-              onClick={() => update({ category: item.slug || item._id })}
-            >
-              {item.name}
-              <ArrowRight size={13} />
-            </button>
-          ))}
-        </div>
+        {/* 1. Circular Category Story/Avatar Bar with Product Counts */}
+        <CategoryCircleBar
+          categories={categories}
+          selectedCategory={filters.category}
+          onSelectCategory={(catSlug) => {
+            update({ category: catSlug });
+            if (window.innerWidth < 1024) {
+              setTimeout(() => {
+                document.getElementById("shop-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 120);
+            }
+          }}
+          totalProductsCount={totalDisplayCount}
+          categoryCounts={categoryCounts}
+        />
 
-        {/* Toolbar with Search, Sort, Grid toggles */}
-        <section className="shop-toolbar" aria-label="Catalog controls">
-          <div className="shop-search">
-            <Search size={17} />
+        {/* 2. Modern Shopify-Style Toolbar */}
+        <section className="shop-toolbar flex-wrap md:flex-nowrap gap-3 p-3 bg-white border border-[#eae7dc] rounded-sm shadow-xs mb-4" aria-label="Catalog controls">
+          
+          {/* Search Input */}
+          <div className="shop-search flex-1 min-w-[200px] bg-[#fafaf8] border border-[#e5e3dc] rounded px-3 py-2 flex items-center gap-2">
+            <Search size={16} className="text-[#8c897e]" />
             <input
               aria-label="Search products"
-              placeholder="Find your next favourite..."
+              placeholder="Search by color, fabric, cut..."
               value={searchDraft}
+              className="bg-transparent border-0 outline-none text-xs text-[#0e0e0c] w-full font-medium placeholder:text-[#8c897e]"
               onChange={(event) => {
                 const value = event.target.value;
                 setSearchDraft(value);
@@ -403,65 +412,148 @@ export default function ProductsPage() {
                   setSearchDraft("");
                   update({ search: "" });
                 }}
+                className="text-[#8c897e] hover:text-black p-0.5"
               >
-                <X size={15} />
+                <X size={14} />
               </button>
             )}
           </div>
 
-          <label className="shop-select">
-            <span className="sr-only">Category</span>
-            <select
-              aria-label="Category"
-              value={category?.slug || category?._id || filters.category}
-              onChange={(event) => update({ category: event.target.value })}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            {/* Mobile Filter Button */}
+            <button
+              type="button"
+              ref={filterTrigger}
+              onClick={() => setMobileOpen(true)}
+              className="lg:hidden flex items-center gap-2 px-3.5 py-2 bg-[#0e0e0c] text-white rounded text-xs font-sans font-semibold tracking-wider uppercase transition-colors hover:bg-black shadow-xs"
             >
-              <option value="">All categories</option>
-              {filters.category && !category && (
-                <option value={filters.category}>{filters.category}</option>
+              <SlidersHorizontal size={14} />
+              <span>Filters</span>
+              {active.length > 0 && (
+                <span className="w-5 h-5 rounded-full bg-[#d4af37] text-black font-mono text-[10px] font-bold flex items-center justify-center">
+                  {active.length}
+                </span>
               )}
-              {categories.map((item) => (
-                <option key={item._id || item.slug} value={item.slug || item._id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} />
-          </label>
-
-          <label className="shop-select shop-sort">
-            <span>Sort by</span>
-            <select
-              aria-label="Sort products"
-              value={filters.sort}
-              onChange={(event) => update({ sort: event.target.value })}
-            >
-              {Object.entries(SORTS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} />
-          </label>
-
-          <div className="shop-grid-toggle" aria-label="Grid layout">
-            <button
-              aria-label="Two column grid"
-              aria-pressed={columns === 2}
-              onClick={() => setColumns(2)}
-            >
-              <Grid2X2 size={18} />
             </button>
-            <button
-              aria-label="Three column grid"
-              aria-pressed={columns === 3}
-              onClick={() => setColumns(3)}
-            >
-              <Grid3X3 size={18} />
-            </button>
+
+            {/* Sort Dropdown */}
+            <label className="shop-select flex items-center gap-1.5 px-3 py-2 bg-[#fafaf8] border border-[#e5e3dc] rounded text-xs font-medium text-[#0e0e0c] relative">
+              <span className="text-[11px] text-[#737168] uppercase tracking-wider font-semibold">Sort:</span>
+              <select
+                aria-label="Sort products"
+                value={filters.sort}
+                onChange={(event) => update({ sort: event.target.value })}
+                className="bg-transparent border-0 outline-none pr-5 text-xs font-medium cursor-pointer"
+              >
+                {Object.entries(SORTS).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="pointer-events-none absolute right-2 text-[#737168]" />
+            </label>
+
+            {/* Grid Toggles (Desktop only) */}
+            <div className="hidden sm:flex items-center gap-1 border border-[#e5e3dc] rounded p-0.5 bg-[#fafaf8]" aria-label="Grid layout">
+              <button
+                aria-label="Two column grid"
+                aria-pressed={columns === 2}
+                onClick={() => setColumns(2)}
+                className={`p-1.5 rounded transition-colors ${
+                  columns === 2 ? "bg-[#0e0e0c] text-white" : "text-[#737168] hover:text-black"
+                }`}
+              >
+                <Grid2X2 size={16} />
+              </button>
+              <button
+                aria-label="Three column grid"
+                aria-pressed={columns === 3}
+                onClick={() => setColumns(3)}
+                className={`p-1.5 rounded transition-colors ${
+                  columns === 3 ? "bg-[#0e0e0c] text-white" : "text-[#737168] hover:text-black"
+                }`}
+              >
+                <Grid3X3 size={16} />
+              </button>
+            </div>
           </div>
         </section>
+
+        {/* 3. Shopify-Style Quick Filter Pills (1-Tap Filters) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none select-none">
+          <button
+            type="button"
+            onClick={() => update({ inStock: filters.inStock ? "" : "true" })}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
+              filters.inStock
+                ? "bg-[#0e0e0c] text-white font-semibold"
+                : "bg-white border border-[#e5e3dc] text-[#555] hover:border-black hover:text-black"
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${filters.inStock ? "bg-[#10b981]" : "bg-gray-300"}`} />
+            <span>In Stock Only</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => update({ stitching: filters.stitching === "stitched" ? "" : "stitched" })}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
+              filters.stitching === "stitched"
+                ? "bg-[#0e0e0c] text-white font-semibold"
+                : "bg-white border border-[#e5e3dc] text-[#555] hover:border-black hover:text-black"
+            }`}
+          >
+            <span>Ready To Wear</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => update({ stitching: filters.stitching === "unstitched" ? "" : "unstitched" })}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
+              filters.stitching === "unstitched"
+                ? "bg-[#0e0e0c] text-white font-semibold"
+                : "bg-white border border-[#e5e3dc] text-[#555] hover:border-black hover:text-black"
+            }`}
+          >
+            <span>Unstitched Lawn</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => update({ minPrice: filters.maxPrice === "10000" ? "" : "0", maxPrice: filters.maxPrice === "10000" ? "" : "10000" })}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
+              filters.maxPrice === "10000"
+                ? "bg-[#0e0e0c] text-white font-semibold"
+                : "bg-white border border-[#e5e3dc] text-[#555] hover:border-black hover:text-black"
+            }`}
+          >
+            <span>Under PKR 10k</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => update({ minPrice: filters.minPrice === "10000" && filters.maxPrice === "25000" ? "" : "10000", maxPrice: filters.minPrice === "10000" && filters.maxPrice === "25000" ? "" : "25000" })}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer ${
+              filters.minPrice === "10000" && filters.maxPrice === "25000"
+                ? "bg-[#0e0e0c] text-white font-semibold"
+                : "bg-white border border-[#e5e3dc] text-[#555] hover:border-black hover:text-black"
+            }`}
+          >
+            <span>PKR 10k - 25k</span>
+          </button>
+
+          {active.length > 0 && (
+            <button
+              type="button"
+              onClick={reset}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold text-rose-600 hover:bg-rose-50 flex-shrink-0 flex items-center gap-1 transition-colors"
+            >
+              <RotateCcw size={12} />
+              <span>Reset All</span>
+            </button>
+          )}
+        </div>
 
         {/* Main Shop Layout: Sidebar + Product Grid */}
         <div className="shop-layout">
