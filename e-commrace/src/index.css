@@ -76,6 +76,22 @@
   animation-play-state: paused;
 }
 
+@keyframes continuousScroll {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-category-stream {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: continuousScroll 40s linear infinite;
+}
+
+.animate-category-stream:hover {
+  animation-play-state: paused;
+}
+
 .animate-luxury-fade {
   animation: luxuryFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

@@ -44,12 +44,20 @@ test.describe("Homepage Luxury Redesign Verification", () => {
       await page.waitForTimeout(300);
     }
 
+    // Check Festive & Bridal Chapters
+    const chaptersHeading = page.getByRole("heading", { name: /The Festive & Bridal Chapters/i });
+    await expect(chaptersHeading).toBeVisible();
+
+    // Check Infinite Category Stream
+    const stream = page.locator(".animate-category-stream");
+    await expect(stream).toBeVisible();
+
     // Check Lookbook spotlight
-    const spotlightHeading = page.getByRole("heading", { name: /Raw Silk Zari Kurta/i });
+    const spotlightHeading = page.getByRole("heading", { name: /Raw Silk.*Kurta/i });
     await expect(spotlightHeading).toBeVisible();
 
     // Check Heritage section
-    const heritageHeading = page.getByRole("heading", { name: /Honoring Pakistan's Textile Heritage/i });
+    const heritageHeading = page.getByRole("heading", { name: /Textile Heritage/i });
     await expect(heritageHeading).toBeVisible();
 
     // Take Desktop Screenshot

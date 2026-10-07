@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts, fetchCategories, fetchHotProducts } from "../../store/productsSlice";
 import { fetchActiveBanners } from "../../store/bannerSlice";
 import { fetchActiveSpotlights } from "../../store/spotlightSlice";
+import { addToCart } from "../../store/cartSlice";
 import ProductCard from "../../components/ProductCard";
 import CategorySwipeSection from "../../components/CategorySwipeSection";
 import LuxuryMarqueeRibbon from "../../components/LuxuryMarqueeRibbon";
@@ -12,8 +13,8 @@ import { DEFAULT_BANNERS } from "../../data/bannerData";
 import { optimizeImage } from "../../utils/imageOptimizer";
 import {
   ArrowRight, Sparkles, ChevronLeft, ChevronRight,
-  Truck, ShieldCheck, RotateCcw, Heart,
-  ExternalLink, Lock, Check, Compass, Layers, Scissors
+  Truck, ShieldCheck, RotateCcw,
+  Lock, Check, Layers, Scissors, ShoppingBag, Eye
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -38,9 +39,13 @@ export default function HomePage() {
     dispatch(fetchActiveSpotlights());
   }, [dispatch, selectedBannerCollection]);
 
-  // Robust banners: use backend banners or fallback to high-res editorial defaults
-  const rawBanners = banners && banners.length > 0 ? banners : DEFAULT_BANNERS;
-  const activeBanners = rawBanners.filter((b) => b.isActive !== false && b.active !== false);
+  // Priority to our high-res Pakistani suit model default banners if server has none or defaults
+  const activeBanners = useMemo(() => {
+    if (banners && banners.length > 0 && banners[0]?.image?.url?.includes("pakistani")) {
+      return banners.filter((b) => b.isActive !== false && b.active !== false);
+    }
+    return DEFAULT_BANNERS;
+  }, [banners]);
 
   // Hero carousel auto-timer (6.5s per slide)
   useEffect(() => {
@@ -84,19 +89,36 @@ export default function HomePage() {
 
   // Spotlight outfit details with safe fallback
   const spotlight = activeSpotlight || {
-    eyebrow: "FESTIVE EDITORIAL 2026",
-    title: "Raw Silk Zari Kurta with Organza Dupatta",
-    description: "Crafted from pure 80-gram raw silk with intricate antique kora-dabka neckline hand embroidery, paired with a laser-cut organza dupatta with scalloped borders.",
+    eyebrow: "ROYAL LAHORE ATELIER '26",
+    title: "Handcrafted Raw Silk Kurta with Organza Dupatta",
+    description: "Tailored from pure 80-gram raw silk with intricate antique kora-dabka neckline hand embroidery, paired with a laser-cut organza dupatta with scalloped zardozi borders.",
     price: 12500,
     currency: "PKR",
-    dispatchBadge: "✓ Ready to Dispatch in 24h",
-    hotspot: { text: "Shop The Model's Kurta", posX: 36, posY: 38 },
-    image: { url: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=1200&q=85" },
-    primaryCta: { text: "SHOP THIS COMPLETE OUTFIT", link: "/products" },
+    dispatchBadge: "✓ Ready to Dispatch in 24h via TCS",
+    hotspot: { text: "Hand-Embroidered Zari Neckline", posX: 36, posY: 32 },
+    image: { url: "/categories/pakistani-raw-silk.jpg" },
+    primaryCta: { text: "ADD COMPLETE ENSEMBLE TO BAG", link: "/products" },
     secondaryCta: { text: "VIEW FULL LOOKBOOK", link: "/products?category=luxury-pret" },
   };
 
-  const spotlightImg = spotlight?.image?.url || spotlight?.image || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=1200&q=85";
+  const spotlightImg = spotlight?.image?.url || spotlight?.image || "/categories/pakistani-raw-silk.jpg";
+
+  const handleSpotlightAddToCart = () => {
+    const featuredProduct = products.find((p) => p._id === "66ce381a9f1b2c0000000004") || products[0];
+    dispatch(
+      addToCart({
+        product: featuredProduct,
+        productId: featuredProduct._id,
+        quantity: 1,
+        size: "M",
+        color: featuredProduct.color || "Maroon",
+      })
+    );
+    toast.success("Added Complete Royal Ensemble to your bag", {
+      icon: "👑",
+      style: { background: "#0e0e0c", color: "#fff", fontSize: "12px" },
+    });
+  };
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
@@ -105,7 +127,7 @@ export default function HomePage() {
       return;
     }
     setNewsletterSubscribed(true);
-    toast.success("Welcome to the Atelier Circle. Check your email for your 10% privilege.", {
+    toast.success("Welcome to the Atelier Circle. Privilege code CLOTHINGDEN10 activated!", {
       icon: "✨",
       style: { background: "#0e0e0c", color: "#fff", fontSize: "12px" },
     });
@@ -115,12 +137,13 @@ export default function HomePage() {
     <div className="bg-[#fafaf8] text-[#0e0e0c] overflow-hidden selection:bg-[#0e0e0c] selection:text-white">
 
       {/* ─────────────────────────────────────────────────────────────
-          1. HIGH-IMPACT EDITORIAL HERO SECTION
-          Cinematic photography, powerful typography, clean CTAs, no clutter
+          1. GRAND HAUTE COUTURE HERO BANNER (PAKISTANI SUIT MODELS)
+          Full-viewport cinematic photography, interactive preview deck,
+          regal serif typography, dual luxury CTAs
           ───────────────────────────────────────────────────────────── */}
-      <section className="relative h-[86vh] sm:h-[90vh] min-h-[600px] max-h-[960px] w-full bg-[#0d0d0b] overflow-hidden select-none">
+      <section className="relative h-[88vh] sm:h-[92vh] min-h-[640px] max-h-[1020px] w-full bg-[#0d0d0b] overflow-hidden select-none">
         {activeBanners.map((slide, idx) => {
-          const imgUrl = slide.image?.url || slide.image || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1920&q=85";
+          const imgUrl = slide.image?.url || slide.image || "/banners/pakistani-festive-lawn.jpg";
           const isCurrent = idx === heroSlide;
 
           return (
@@ -130,62 +153,72 @@ export default function HomePage() {
                 isCurrent ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
               }`}
             >
-              {/* Background Model Image with Cinematic Ken Burns Ease */}
+              {/* Pakistani Model Background with Subtle Cinematic Ken Burns */}
               <img
                 src={optimizeImage(imgUrl, { width: 1920 })}
-                alt={slide.title || "Clothing Den Campaign"}
+                alt={slide.title || "Pakistani Luxury Suit Model"}
                 fetchPriority={idx === 0 ? "high" : "auto"}
                 className={`w-full h-full object-cover object-top sm:object-center transition-transform duration-10000 ease-out ${
                   isCurrent ? "scale-105" : "scale-100"
                 }`}
               />
 
-              {/* Dual Editorial Vignette: Soft Warm Wash Keeping Model Vibrant & Text Legible */}
+              {/* Dual Filmic Vignette: Keeps Pakistani Embroidery Vibrant & Text Pristine */}
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(13,13,11,0.25) 0%, rgba(13,13,11,0.3) 40%, rgba(13,13,11,0.85) 100%), linear-gradient(90deg, rgba(13,13,11,0.75) 0%, rgba(13,13,11,0.35) 45%, transparent 100%)",
+                    "linear-gradient(180deg, rgba(13,13,11,0.3) 0%, rgba(13,13,11,0.2) 40%, rgba(13,13,11,0.85) 100%), linear-gradient(90deg, rgba(13,13,11,0.85) 0%, rgba(13,13,11,0.4) 50%, transparent 100%)",
                 }}
               />
 
-              {/* Hero Editorial Content Container */}
-              <div className="absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-end pb-16 sm:pb-24 z-20">
-                <div className="max-w-2xl space-y-4 sm:space-y-5">
+              {/* Content Box */}
+              <div className="absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-end pb-20 sm:pb-28 z-20">
+                <div className="max-w-2xl space-y-4 sm:space-y-6">
                   
-                  {/* Subtle Whispering Badge */}
+                  {/* Whispering Atelier Crest Tag */}
                   <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-[1px] bg-[#c5a059]" />
-                    <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.3em] uppercase text-[#d4af37]">
-                      {slide.badge || slide.tagline || "ATELIER SPRING / SUMMER '26"}
+                    <span className="w-8 h-[1px] bg-[#c5a059]" />
+                    <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.32em] uppercase text-[#d4af37]">
+                      {slide.badge || slide.tagline || "ROYAL ATELIER EDIT '26"}
                     </span>
                   </div>
 
-                  {/* Majestic Display Headline */}
+                  {/* Majestic Headline */}
                   <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white font-normal tracking-tight leading-[1.0] text-balance">
                     {slide.title}
                   </h1>
 
-                  {/* Poignant Supporting Line (1-2 sentences max) */}
-                  <p className="text-xs sm:text-sm md:text-base text-[#e5e3dc] font-light max-w-lg leading-relaxed font-sans opacity-90">
-                    {slide.subtitle || "A symphony of intricate schiffli embroidery, pure cambric weaves, and delicate organza dupattas designed for effortless grace."}
+                  {/* Poetic Supporting Copy */}
+                  <p className="text-xs sm:text-sm md:text-base text-[#e5e3dc] font-light max-w-xl leading-relaxed font-sans opacity-90">
+                    {slide.subtitle || "A royal symphony of intricate gold zari necklines, pure cambric weaves, and delicate organza dupattas hand-tailored for effortless grace."}
                   </p>
 
+                  {/* Floating Garment Craftsmanship Pill */}
+                  <div className="hidden sm:inline-flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/15 text-white/90 text-[11px] font-sans tracking-wide">
+                    <span className="text-[#c5a059] font-mono">✦</span>
+                    <span>Fabric: <strong>{slide.fabric || "Pure Embroidered Lawn"}</strong></span>
+                    <span className="opacity-40">•</span>
+                    <span>Origin: <strong>{slide.origin || "Lahore Atelier"}</strong></span>
+                  </div>
+
                   {/* Dual Luxury Action Buttons */}
-                  <div className="pt-2 sm:pt-4 flex flex-wrap items-center gap-3.5">
+                  <div className="pt-2 flex flex-wrap items-center gap-3.5">
                     <Link
                       to={slide.ctaLink || "/products"}
-                      className="px-8 py-3.5 sm:py-4 bg-white hover:bg-[#c5a059] text-[#0e0e0c] hover:text-white font-sans font-bold text-[11px] sm:text-xs uppercase tracking-[0.22em] transition-all duration-300 shadow-xl flex items-center gap-2 group"
+                      className="px-8 py-4 bg-white hover:bg-[#c5a059] text-[#0e0e0c] hover:text-white font-sans font-bold text-[11px] sm:text-xs uppercase tracking-[0.24em] transition-all duration-300 shadow-2xl flex items-center gap-2.5 group"
                     >
+                      <ShoppingBag size={14} />
                       <span>{slide.ctaText || "Shop Collection"}</span>
                       <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </Link>
 
                     <Link
                       to="/products?category=luxury-pret"
-                      className="px-7 py-3.5 sm:py-4 border border-white/40 hover:border-white text-white font-sans font-semibold text-[11px] sm:text-xs uppercase tracking-[0.22em] transition-all duration-300 hover:bg-white/10 backdrop-blur-xs"
+                      className="px-7 py-4 border border-white/40 hover:border-white text-white font-sans font-semibold text-[11px] sm:text-xs uppercase tracking-[0.22em] transition-all duration-300 hover:bg-white/10 backdrop-blur-xs flex items-center gap-2"
                     >
-                      <span>View Lookbook</span>
+                      <Eye size={14} />
+                      <span>Explore Lookbook</span>
                     </Link>
                   </div>
                 </div>
@@ -194,50 +227,70 @@ export default function HomePage() {
           );
         })}
 
-        {/* Minimalist Slide Navigation & Indicators */}
-        {activeBanners.length > 1 && (
-          <div className="absolute bottom-8 right-6 sm:right-12 z-30 flex items-center gap-6">
-            
-            {/* Editorial Slide Counter */}
-            <div className="font-mono text-xs text-white/80 tracking-widest hidden sm:block">
+        {/* Right-Side Interactive Slide Deck (Miniature Pakistani Suit Model Cards) */}
+        <div className="absolute bottom-8 right-6 sm:right-12 z-30 flex flex-col items-end gap-4">
+          
+          {/* Interactive Slide Preview Cards for Instant Click */}
+          <div className="hidden md:flex items-center gap-3 bg-black/50 backdrop-blur-md p-2 rounded-xs border border-white/10">
+            {activeBanners.map((b, i) => {
+              const miniImg = b.image?.url || b.image || "/banners/pakistani-festive-lawn.jpg";
+              const isActive = i === heroSlide;
+
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setHeroSlide(i)}
+                  className={`flex items-center gap-2.5 p-1.5 transition-all duration-300 cursor-pointer ${
+                    isActive
+                      ? "bg-white/15 border border-[#c5a059] shadow-lg"
+                      : "opacity-60 hover:opacity-100 border border-transparent"
+                  }`}
+                >
+                  <img
+                    src={miniImg}
+                    alt={b.title}
+                    className="w-10 h-10 object-cover object-top rounded-xs"
+                  />
+                  <div className="text-left pr-2">
+                    <span className="font-mono text-[9px] text-[#c5a059] block tracking-widest">
+                      0{i + 1}
+                    </span>
+                    <span className="text-[10px] font-sans font-medium text-white line-clamp-1 max-w-[90px]">
+                      {b.title?.split(" ")[0]} Edit
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Minimal Controls & Counter */}
+          <div className="flex items-center gap-4">
+            <div className="font-mono text-xs text-white/80 tracking-widest">
               <span className="text-white font-bold">0{heroSlide + 1}</span>
               <span className="mx-1.5 opacity-40">/</span>
               <span className="opacity-60">0{activeBanners.length}</span>
             </div>
 
-            {/* Slide Progress Tracks */}
-            <div className="flex items-center gap-2">
-              {activeBanners.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setHeroSlide(i)}
-                  className={`h-0.5 transition-all duration-500 cursor-pointer ${
-                    i === heroSlide ? "w-8 bg-[#c5a059]" : "w-3 bg-white/30 hover:bg-white/60"
-                  }`}
-                  aria-label={`Go to slide ${i + 1}`}
-                />
-              ))}
-            </div>
-
-            {/* Prev / Next Minimal Buttons */}
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setHeroSlide((prev) => (prev - 1 + activeBanners.length) % activeBanners.length)}
-                className="w-9 h-9 rounded-full border border-white/20 bg-black/30 hover:bg-white hover:text-black text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95"
+                className="w-9 h-9 rounded-full border border-white/20 bg-black/40 hover:bg-white hover:text-black text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95"
                 aria-label="Previous Slide"
               >
                 <ChevronLeft size={16} />
               </button>
               <button
                 onClick={() => setHeroSlide((prev) => (prev + 1) % activeBanners.length)}
-                className="w-9 h-9 rounded-full border border-white/20 bg-black/30 hover:bg-white hover:text-black text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95"
+                className="w-9 h-9 rounded-full border border-white/20 bg-black/40 hover:bg-white hover:text-black text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 cursor-pointer active:scale-95"
                 aria-label="Next Slide"
               >
                 <ChevronRight size={16} />
               </button>
             </div>
           </div>
-        )}
+        </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -247,16 +300,120 @@ export default function HomePage() {
       <LuxuryMarqueeRibbon />
 
       {/* ─────────────────────────────────────────────────────────────
-          3. CURATED CAPSULE EDITS (SHOP BY CATEGORY)
-          Editorial portrait tiles, generous breathing room, clean hover
+          3. EXPLORE BY CATEGORY: INFINITE CONTINUOUS SWIPE STREAM
+          Unlimited auto-swiping marquee, never stops, pause on hover,
+          every single card is 100% clickable with Pakistani suit models!
           ───────────────────────────────────────────────────────────── */}
       <CategorySwipeSection categories={categories} />
 
       {/* ─────────────────────────────────────────────────────────────
-          4. SIGNATURE CREATIONS & NEW DROPS (INTERACTIVE PRODUCT SHOWCASE)
-          Editorial headline, capsule filter tabs, clean fashion cards
+          4. BRAND NEW: THE GRAND DUAL LOOKBOOK EDIT (HIGH-FASHION SPLIT)
+          Two high-contrast editorial campaign banners side-by-side
           ───────────────────────────────────────────────────────────── */}
       <section className="py-20 sm:py-28 bg-white border-b border-[#eae7dc]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div>
+              <span className="text-[11px] font-sans font-semibold tracking-[0.28em] text-[#9c7830] uppercase block mb-2.5">
+                EDITORIAL HIGHLIGHTS
+              </span>
+              <h2 className="font-serif text-3xl sm:text-5xl text-[#0e0e0c] tracking-tight leading-[1.08] font-medium">
+                The Festive & Bridal Chapters
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-[#66655c] max-w-md font-light leading-relaxed">
+              Explore our two signature design pillars: vibrant daylight festive lawn and regal candlelight evening velvet formals.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            
+            {/* Card 1: Festive Lawn (7 Cols) */}
+            <div className="lg:col-span-7 relative aspect-[4/3] sm:aspect-[16/10] overflow-hidden group bg-[#111] shadow-lg">
+              <img
+                src="/banners/pakistani-festive-lawn.jpg"
+                alt="Pakistani Festive Lawn Model"
+                className="w-full h-full object-cover object-top transition-transform duration-1000 ease-out group-hover:scale-106"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+              
+              <div className="absolute top-6 left-6 z-10">
+                <span className="text-[10px] font-mono tracking-widest uppercase bg-white/90 text-black px-3 py-1 font-bold">
+                  CHAPTER 01 • SUMMER LAWN
+                </span>
+              </div>
+
+              <div className="absolute inset-x-0 bottom-0 p-8 sm:p-10 text-white z-10 flex flex-col justify-end space-y-3">
+                <span className="text-[11px] font-sans font-medium tracking-[0.24em] text-[#d4af37] uppercase">
+                  UNSTITCHED & READY TO WEAR
+                </span>
+                <h3 className="font-serif text-3xl sm:text-4xl text-white font-normal leading-tight">
+                  Festive Embroidered Lawn Suits
+                </h3>
+                <p className="text-xs sm:text-sm text-[#e5e3dc] max-w-lg font-light leading-relaxed">
+                  Pure cambric shirts featuring intricate floral threadwork, laser-cut schiffli daman, and digitally printed tissue silk dupattas.
+                </p>
+                <div className="pt-2 flex items-center justify-between">
+                  <span className="font-serif text-lg text-white">Starting from PKR 7,600</span>
+                  <Link
+                    to="/products?category=festive-collection"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-[#c5a059] text-black hover:text-white font-sans font-bold text-xs uppercase tracking-[0.2em] transition-all duration-300"
+                  >
+                    <span>Shop Lawn Edit</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Velvet Formals (5 Cols) */}
+            <div className="lg:col-span-5 relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-auto overflow-hidden group bg-[#111] shadow-lg">
+              <img
+                src="/banners/pakistani-velvet-couture.jpg"
+                alt="Pakistani Velvet Couture Model"
+                className="w-full h-full object-cover object-top transition-transform duration-1000 ease-out group-hover:scale-106"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
+              
+              <div className="absolute top-6 left-6 z-10">
+                <span className="text-[10px] font-mono tracking-widest uppercase bg-[#c5a059] text-black px-3 py-1 font-bold">
+                  CHAPTER 02 • ROYAL VELVET
+                </span>
+              </div>
+
+              <div className="absolute inset-x-0 bottom-0 p-8 sm:p-10 text-white z-10 flex flex-col justify-end space-y-3">
+                <span className="text-[11px] font-sans font-medium tracking-[0.24em] text-[#d4af37] uppercase">
+                  BRIDAL & FORMAL PRET
+                </span>
+                <h3 className="font-serif text-3xl sm:text-4xl text-white font-normal leading-tight">
+                  Crimson Velvet & Raw Silk Formals
+                </h3>
+                <p className="text-xs sm:text-sm text-[#e5e3dc] font-light leading-relaxed">
+                  Micro-velvet 9000 enriched with hand-worked dabka tilla, antique kora neckline, and scalloped tissue borders.
+                </p>
+                <div className="pt-2 flex items-center justify-between">
+                  <span className="font-serif text-lg text-white">Starting from PKR 10,990</span>
+                  <Link
+                    to="/products?category=luxury-pret"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#c5a059] hover:bg-white text-black font-sans font-bold text-xs uppercase tracking-[0.2em] transition-all duration-300"
+                  >
+                    <span>Explore Formals</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. SIGNATURE CREATIONS & NEW DROPS (INTERACTIVE PRODUCT SHOWCASE)
+          Editorial headline, capsule filter tabs, clean fashion cards
+          ───────────────────────────────────────────────────────────── */}
+      <section className="py-20 sm:py-28 bg-[#fafaf8] border-b border-[#eae7dc]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Section Header */}
@@ -284,7 +441,7 @@ export default function HomePage() {
                   className={`px-4 py-2 text-[11px] font-sans font-semibold tracking-[0.18em] uppercase transition-all duration-200 cursor-pointer ${
                     activeCategoryTab === tab.id
                       ? "bg-[#0e0e0c] text-white shadow-xs"
-                      : "bg-[#f5f4ef] text-[#55534b] hover:bg-[#eae8df] hover:text-[#0e0e0c]"
+                      : "bg-[#eae8df] text-[#55534b] hover:bg-[#dedcd1] hover:text-[#0e0e0c]"
                   }`}
                 >
                   {tab.label}
@@ -314,7 +471,7 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          5. THE ATELIER LOOKBOOK SPOTLIGHT (`/api/v11/spotlight`)
+          6. THE ATELIER LOOKBOOK SPOTLIGHT (`/api/v11/spotlight`)
           High-fashion split composition, pulsing interactive hotspot,
           poetic craftsmanship storytelling & instant checkout trigger
           ───────────────────────────────────────────────────────────── */}
@@ -323,7 +480,7 @@ export default function HomePage() {
           <div className="bg-[#0e0e0c] text-white overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-stretch shadow-2xl border border-[#22221c]">
             
             {/* Left: Dramatic Portrait Photography with Hotspot Pin */}
-            <div className="lg:col-span-6 relative aspect-[3/4] lg:aspect-auto min-h-[460px] lg:min-h-[640px] overflow-hidden bg-black group">
+            <div className="lg:col-span-6 relative aspect-[3/4] lg:aspect-auto min-h-[480px] lg:min-h-[660px] overflow-hidden bg-black group">
               <img
                 src={optimizeImage(spotlightImg, { width: 1400 })}
                 alt={spotlight?.title || "Atelier Lookbook"}
@@ -338,7 +495,7 @@ export default function HomePage() {
                 className="absolute z-20 cursor-pointer"
                 style={{
                   left: `${spotlight?.hotspot?.posX ?? 36}%`,
-                  top: `${spotlight?.hotspot?.posY ?? 38}%`,
+                  top: `${spotlight?.hotspot?.posY ?? 32}%`,
                 }}
                 onClick={() => setHotspotActive((prev) => !prev)}
               >
@@ -346,20 +503,20 @@ export default function HomePage() {
                 <span className="absolute -inset-2 rounded-full bg-[#c5a059]/40 animate-ping" />
                 <button
                   type="button"
-                  className="relative w-8 h-8 rounded-full bg-white/95 text-[#0e0e0c] flex items-center justify-center shadow-2xl border border-white/60 hover:scale-110 transition-transform"
+                  className="relative w-9 h-9 rounded-full bg-white/95 text-[#0e0e0c] flex items-center justify-center shadow-2xl border border-white/60 hover:scale-110 transition-transform"
                   aria-label="View Garment Details"
                 >
-                  <Sparkles size={14} className="text-[#c5a059]" />
+                  <Sparkles size={15} className="text-[#c5a059]" />
                 </button>
 
                 {/* Hotspot Floating Tooltip */}
                 {hotspotActive && (
-                  <div className="absolute left-10 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-md text-[#0e0e0c] px-4 py-2.5 shadow-2xl whitespace-nowrap border border-[#eae7dc] animate-in fade-in duration-300">
+                  <div className="absolute left-11 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-md text-[#0e0e0c] px-4 py-2.5 shadow-2xl whitespace-nowrap border border-[#eae7dc] animate-in fade-in duration-300">
                     <p className="text-[10px] font-sans font-semibold tracking-widest uppercase text-[#9c7830]">
-                      FEATURED ATELIER PIECE
+                      PAKISTANI CRAFTSMANSHIP
                     </p>
                     <p className="text-xs font-serif font-bold text-[#0e0e0c]">
-                      {spotlight?.hotspot?.text || "Raw Silk Zari Kurta"}
+                      {spotlight?.hotspot?.text || "Hand-Embroidered Zari Neckline"}
                     </p>
                   </div>
                 )}
@@ -370,15 +527,15 @@ export default function HomePage() {
             <div className="lg:col-span-6 p-8 sm:p-14 lg:p-16 flex flex-col justify-center space-y-7">
               <div className="space-y-3">
                 <span className="text-[11px] font-sans font-semibold tracking-[0.3em] uppercase text-[#c5a059] block">
-                  {spotlight?.eyebrow || "FESTIVE EDITORIAL 2026"}
+                  {spotlight?.eyebrow || "ROYAL LAHORE ATELIER '26"}
                 </span>
                 <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal leading-[1.08] text-white">
-                  {spotlight?.title || "Raw Silk Zari Kurta with Organza Dupatta"}
+                  {spotlight?.title || "Handcrafted Raw Silk Kurta with Organza Dupatta"}
                 </h2>
               </div>
 
               <p className="text-xs sm:text-sm text-[#b8b5ab] font-light leading-relaxed">
-                {spotlight?.description || "Crafted from pure 80-gram raw silk with intricate antique kora-dabka neckline hand embroidery, paired with a laser-cut organza dupatta with scalloped borders."}
+                {spotlight?.description || "Tailored from pure 80-gram raw silk with intricate antique kora-dabka neckline hand embroidery, paired with a laser-cut organza dupatta with scalloped zardozi borders."}
               </p>
 
               {/* Artisanal Heritage Breakdown */}
@@ -389,11 +546,11 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono tracking-widest text-[#c5a059] uppercase block">TECHNIQUE</span>
-                  <p className="text-xs text-white font-medium">Hand Kora-Dabka Zari</p>
+                  <p className="text-xs text-white font-medium">Antique Kora-Dabka Zari</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono tracking-widest text-[#c5a059] uppercase block">DUPATTA</span>
-                  <p className="text-xs text-white font-medium">Laser Scalloped Organza</p>
+                  <p className="text-xs text-white font-medium">Scalloped Organza</p>
                 </div>
               </div>
 
@@ -403,18 +560,20 @@ export default function HomePage() {
                   {spotlight?.currency || "PKR"} {Number(spotlight?.price || 12500).toLocaleString()}
                 </span>
                 <span className="text-[11px] font-sans text-emerald-300 font-medium tracking-wider uppercase bg-emerald-950/60 px-3 py-1 border border-emerald-500/20">
-                  {spotlight?.dispatchBadge || "✓ Express Dispatch in 24 Hours"}
+                  {spotlight?.dispatchBadge || "✓ Ready to Dispatch in 24h via TCS"}
                 </span>
               </div>
 
               {/* Direct CTAs */}
               <div className="pt-2 flex flex-wrap gap-4">
-                <Link
-                  to={spotlight?.primaryCta?.link || "/products"}
-                  className="px-8 py-4 bg-[#c5a059] hover:bg-white text-[#0e0e0c] font-sans font-bold text-xs uppercase tracking-[0.22em] transition-all duration-300 shadow-xl"
+                <button
+                  type="button"
+                  onClick={handleSpotlightAddToCart}
+                  className="px-8 py-4 bg-[#c5a059] hover:bg-white text-[#0e0e0c] font-sans font-bold text-xs uppercase tracking-[0.22em] transition-all duration-300 shadow-xl cursor-pointer flex items-center gap-2"
                 >
-                  {spotlight?.primaryCta?.text || "Shop This Complete Outfit"}
-                </Link>
+                  <ShoppingBag size={14} />
+                  <span>{spotlight?.primaryCta?.text || "Add Ensemble to Bag"}</span>
+                </button>
                 <Link
                   to={spotlight?.secondaryCta?.link || "/products?category=luxury-pret"}
                   className="px-7 py-4 border border-white/30 hover:border-white text-white font-sans font-semibold text-xs uppercase tracking-[0.22em] transition-all duration-300 hover:bg-white/10"
@@ -428,7 +587,7 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          6. THE FABRIC & CRAFTSMANSHIP HERITAGE (BRAND STORY / IDENTITY)
+          7. THE FABRIC & CRAFTSMANSHIP HERITAGE (BRAND STORY / IDENTITY)
           3 minimalist editorial pillars establishing luxury prestige
           ───────────────────────────────────────────────────────────── */}
       <section className="py-20 sm:py-28 bg-[#f5f4ef] border-b border-[#eae7dc]">
@@ -460,7 +619,7 @@ export default function HomePage() {
                 Pure Egyptian Cambric & Silk
               </h3>
               <p className="text-xs sm:text-sm text-[#66655c] font-light leading-relaxed">
-                We select exclusively 80-gram pure raw silk, combed Egyptian lawn, and breathable Swiss voile that breathe naturally in tropical warmth.
+                We select exclusively 80-gram pure raw silk, combed Egyptian lawn, and breathable Swiss voile that drape naturally with majestic poise.
               </p>
             </div>
 
@@ -512,7 +671,7 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          7. LIMITED FESTIVE EDITIONS (BEST SELLERS)
+          8. LIMITED FESTIVE EDITIONS (BEST SELLERS)
           Clean 4-column presentation of top-rated outfits
           ───────────────────────────────────────────────────────────── */}
       <section className="py-20 sm:py-28 bg-white border-b border-[#eae7dc]">
@@ -547,7 +706,7 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          8. SEEN IN CLOTHING DEN (EDITORIAL COMMUNITY LOOKBOOK)
+          9. SEEN IN CLOTHING DEN (EDITORIAL COMMUNITY LOOKBOOK)
           Minimalist, high-fashion styling showcase
           ───────────────────────────────────────────────────────────── */}
       <section className="py-20 sm:py-28 bg-[#fafaf8] border-b border-[#eae7dc]">
@@ -570,34 +729,34 @@ export default function HomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {[
               {
-                img: products[0]?.images?.[0]?.url || "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=85",
+                img: "/banners/pakistani-festive-lawn.jpg",
                 city: "Lahore",
-                tag: "Raw Silk Kurta",
-              },
-              {
-                img: products[1]?.images?.[0]?.url || "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=600&q=85",
-                city: "Karachi",
                 tag: "Festive Lawn '26",
               },
               {
-                img: products[2]?.images?.[0]?.url || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=85",
+                img: "/categories/pakistani-raw-silk.jpg",
+                city: "Karachi",
+                tag: "Raw Silk Kurta",
+              },
+              {
+                img: "/banners/pakistani-velvet-couture.jpg",
                 city: "Islamabad",
-                tag: "Zari Formal Set",
+                tag: "Velvet Couture",
               },
               {
-                img: products[3]?.images?.[0]?.url || "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=85",
+                img: "/banners/pakistani-festive-pret.jpg",
                 city: "Dubai",
-                tag: "Jacquard Co-Ord",
+                tag: "Schiffli Silk",
               },
               {
-                img: products[4]?.images?.[0]?.url || "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=600&q=85",
+                img: "/categories/pakistani-pastel-lawn.jpg",
                 city: "London",
-                tag: "Cambric Pret",
+                tag: "Pastel Lawn Set",
               },
               {
-                img: products[5]?.images?.[0]?.url || "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?auto=format&fit=crop&w=600&q=85",
+                img: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=85",
                 city: "Toronto",
-                tag: "Organza Wrap",
+                tag: "Silk Pret",
               },
             ].map((item, idx) => (
               <div key={idx} className="relative aspect-[3/4] overflow-hidden group bg-[#0e0e0c]">
@@ -621,7 +780,7 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          9. THE ATELIER ASSURANCES (BENEFITS & TRUST)
+          10. THE ATELIER ASSURANCES (BENEFITS & TRUST)
           Understated horizontal strip, no bulky repetitive cards
           ───────────────────────────────────────────────────────────── */}
       <section className="py-14 sm:py-16 bg-white border-b border-[#eae7dc]">
@@ -634,10 +793,10 @@ export default function HomePage() {
               </div>
               <div className="space-y-1">
                 <h4 className="text-xs font-sans font-bold uppercase tracking-wider text-[#0e0e0c]">
-                  Nationwide Express
+                  Nationwide Express TCS
                 </h4>
                 <p className="text-[11px] text-[#737168] leading-relaxed">
-                  Complimentary on all orders above PKR 5,000 via TCS.
+                  Complimentary express shipping across Pakistan on orders above PKR 5,000.
                 </p>
               </div>
             </div>
@@ -662,10 +821,10 @@ export default function HomePage() {
               </div>
               <div className="space-y-1">
                 <h4 className="text-xs font-sans font-bold uppercase tracking-wider text-[#0e0e0c]">
-                  100% Authentic Textiles
+                  100% Authentic Fabric
                 </h4>
                 <p className="text-[11px] text-[#737168] leading-relaxed">
-                  Pure combed lawn, raw silk, and artisanal finishes.
+                  Pure combed lawn, 80g raw silk, and artisanal hand-finished zardozi.
                 </p>
               </div>
             </div>
@@ -679,7 +838,7 @@ export default function HomePage() {
                   Encrypted Payments
                 </h4>
                 <p className="text-[11px] text-[#737168] leading-relaxed">
-                  Cash on Delivery, PayFast, EasyPaisa, JazzCash & Cards.
+                  Cash on Delivery (COD), PayFast, EasyPaisa, JazzCash & Visa/MasterCard.
                 </p>
               </div>
             </div>
@@ -689,7 +848,7 @@ export default function HomePage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          10. VIP ATELIER CIRCLE (NEWSLETTER / COMMUNITY)
+          11. VIP ATELIER CIRCLE (NEWSLETTER / COMMUNITY)
           Clean luxury invitation with working code reward
           ───────────────────────────────────────────────────────────── */}
       <section className="py-20 sm:py-28 bg-[#0e0e0c] text-white">
