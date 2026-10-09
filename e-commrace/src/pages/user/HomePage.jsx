@@ -140,9 +140,9 @@ export default function HomePage() {
           Full-viewport cinematic photography, interactive preview deck,
           regal serif typography, dual luxury CTAs
           ───────────────────────────────────────────────────────────── */}
-      <section className="relative h-[88vh] sm:h-[92vh] min-h-[640px] max-h-[1020px] w-full bg-[#0d0d0b] overflow-hidden select-none">
+      <section className="relative h-[86vh] sm:h-[92vh] min-h-[560px] max-h-[920px] w-full bg-[#0d0d0b] overflow-hidden select-none">
         {activeBanners.map((slide, idx) => {
-          const imgUrl = slide.image?.url || slide.image || "/banners/pakistani-festive-lawn.jpg";
+          const imgUrl = slide.mobileImage || slide.image?.url || slide.image || "/banners/pakistani-festive-lawn.jpg";
           const isCurrent = idx === heroSlide;
 
           return (
@@ -152,12 +152,12 @@ export default function HomePage() {
                 isCurrent ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
               }`}
             >
-              {/* Pakistani Model Background with Subtle Cinematic Ken Burns */}
+              {/* Pakistani Model Background with Mobile Portrait Framing & Ken Burns */}
               <img
                 src={optimizeImage(imgUrl, { width: 1920 })}
                 alt={slide.title || "Pakistani Luxury Suit Model"}
                 fetchPriority={idx === 0 ? "high" : "auto"}
-                className={`w-full h-full object-cover object-top sm:object-center transition-transform duration-10000 ease-out ${
+                className={`w-full h-full object-cover object-[center_18%] sm:object-center transition-transform duration-10000 ease-out ${
                   isCurrent ? "scale-105" : "scale-100"
                 }`}
               />
@@ -167,29 +167,29 @@ export default function HomePage() {
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   background:
-                    "linear-gradient(180deg, rgba(10,10,8,0.4) 0%, rgba(10,10,8,0.2) 35%, rgba(10,10,8,0.92) 100%), linear-gradient(90deg, rgba(10,10,8,0.9) 0%, rgba(10,10,8,0.45) 50%, transparent 100%)",
+                    "linear-gradient(180deg, rgba(10,10,8,0.45) 0%, rgba(10,10,8,0.15) 30%, rgba(10,10,8,0.92) 85%, rgba(10,10,8,0.98) 100%), linear-gradient(90deg, rgba(10,10,8,0.85) 0%, rgba(10,10,8,0.3) 55%, transparent 100%)",
                 }}
               />
 
               {/* Vibrant Front Content Box */}
-              <div className="absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-end pb-16 sm:pb-24 z-20">
-                <div className="max-w-2xl space-y-4 sm:space-y-6">
+              <div className="absolute inset-0 max-w-7xl mx-auto px-5 sm:px-12 flex flex-col justify-end pb-12 sm:pb-22 z-20">
+                <div className="max-w-2xl space-y-3.5 sm:space-y-6">
                   
                   {/* Vibrant Luxury Crest Tag */}
-                  <div className="flex items-center gap-3">
-                    <span className="w-10 h-[2px] bg-[#d4af37]" />
-                    <span className="text-[10px] sm:text-[11px] font-sans font-extrabold tracking-[0.32em] uppercase bg-[#d4af37] text-[#0e0e0c] px-3.5 py-1 rounded-xs shadow-lg">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <span className="w-8 sm:w-10 h-[2px] bg-[#d4af37]" />
+                    <span className="text-[9.5px] sm:text-[11px] font-sans font-extrabold tracking-[0.28em] sm:tracking-[0.32em] uppercase bg-[#d4af37] text-[#0e0e0c] px-3 sm:px-3.5 py-1 rounded-xs shadow-lg">
                       {slide.badge || slide.tagline || "ROYAL ATELIER EDIT '26"}
                     </span>
                   </div>
 
                   {/* Majestic Vibrant Headline */}
-                  <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl text-white font-medium tracking-tight leading-[1.03] text-balance drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
+                  <h1 className="font-serif text-3xl sm:text-6xl md:text-7xl lg:text-8xl text-white font-medium tracking-tight leading-[1.06] text-balance drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
                     {slide.title}
                   </h1>
 
                   {/* High-Contrast Vibrant Supporting Copy */}
-                  <p className="text-sm sm:text-base md:text-lg text-white font-normal max-w-xl leading-relaxed font-sans drop-shadow-md">
+                  <p className="text-xs sm:text-base md:text-lg text-white/95 font-normal max-w-xl leading-relaxed font-sans line-clamp-2 sm:line-clamp-none drop-shadow-md">
                     {slide.subtitle || "A royal symphony of intricate gold zari necklines, pure cambric weaves, and delicate organza dupattas hand-tailored for effortless grace."}
                   </p>
 
@@ -202,22 +202,22 @@ export default function HomePage() {
                   </div>
 
                   {/* Vibrant Dual Action Buttons */}
-                  <div className="pt-2 flex flex-wrap items-center gap-4">
+                  <div className="pt-1.5 sm:pt-2 flex flex-row items-center gap-2.5 sm:gap-4">
                     <Link
                       to={slide.ctaLink || "/products"}
-                      className="px-8 py-4 bg-gradient-to-r from-[#d4af37] via-[#f5d77f] to-[#d4af37] hover:brightness-110 text-[#0e0e0c] font-sans font-extrabold text-xs uppercase tracking-[0.24em] transition-all duration-300 shadow-2xl flex items-center gap-2.5 group rounded-xs cursor-pointer"
+                      className="flex-1 sm:flex-initial px-5 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-[#d4af37] via-[#f5d77f] to-[#d4af37] hover:brightness-110 text-[#0e0e0c] font-sans font-extrabold text-[11px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.24em] transition-all duration-300 shadow-2xl flex items-center justify-center gap-2 group rounded-xs cursor-pointer"
                     >
-                      <ShoppingBag size={15} />
-                      <span>{slide.ctaText || "Shop Collection"}</span>
-                      <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
+                      <ShoppingBag size={14} />
+                      <span>{slide.ctaText || "Shop Now"}</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </Link>
 
                     <Link
                       to="/products?category=luxury-pret"
-                      className="px-7 py-4 border-2 border-white hover:bg-white hover:text-black text-white font-sans font-bold text-xs uppercase tracking-[0.22em] transition-all duration-300 backdrop-blur-xs flex items-center gap-2 rounded-xs cursor-pointer"
+                      className="flex-1 sm:flex-initial px-4 sm:px-7 py-3.5 sm:py-4 border-2 border-white hover:bg-white hover:text-black text-white font-sans font-bold text-[11px] sm:text-xs uppercase tracking-[0.18em] sm:tracking-[0.22em] transition-all duration-300 backdrop-blur-xs flex items-center justify-center gap-2 rounded-xs cursor-pointer"
                     >
-                      <Eye size={15} />
-                      <span>Explore Lookbook</span>
+                      <Eye size={14} />
+                      <span>Lookbook</span>
                     </Link>
                   </div>
                 </div>
@@ -509,40 +509,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          8. LIMITED FESTIVE EDITIONS (BEST SELLERS)
-          Clean 4-column presentation of top-rated outfits
-          ───────────────────────────────────────────────────────────── */}
-      <section className="py-20 sm:py-28 bg-white border-b border-[#eae7dc]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-            <div>
-              <span className="text-[11px] font-sans font-semibold tracking-[0.28em] text-[#9c7830] uppercase block mb-2.5">
-                CURATED DEMAND
-              </span>
-              <h2 className="font-serif text-3xl sm:text-5xl text-[#0e0e0c] tracking-tight leading-[1.08] font-medium">
-                The Most-Coveted Pieces
-              </h2>
-            </div>
 
-            <Link
-              to="/products"
-              className="text-xs font-sans font-bold uppercase tracking-[0.2em] text-[#0e0e0c] hover:text-[#c5a059] flex items-center gap-1.5 transition-colors"
-            >
-              <span>Explore All ({products.length})</span>
-              <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {topSellingProducts.slice(0, 4).map((product, idx) => (
-              <ProductCard key={product._id || `top-${idx}`} product={product} index={idx} />
-            ))}
-          </div>
-
-        </div>
-      </section>
 
 
 
